@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  firebridge:
+    build: .
+    container_name: firebridge_nasa
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - NODE_ENV=production
+      # - NASA_FIRMS_MAP_KEY=your_key_here
+    restart: unless-stopped
