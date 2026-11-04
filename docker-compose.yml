@@ -11,3 +11,4 @@ services:
       - NODE_ENV=production
       # - NASA_FIRMS_MAP_KEY=your_key_here
     restart: unless-stopped
+

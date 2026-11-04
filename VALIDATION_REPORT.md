@@ -90,3 +90,4 @@ Across all 324 continuous monthly observation intervals (2000–2026):
 ## 7. Operational Verdict
 
 The FireBridge harmonization protocol demonstrates publication-grade statistical rigor, robustly eliminates sensor transition artifacts, and is approved for operational deployment in wildfire intelligence systems.
+

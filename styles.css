@@ -902,6 +902,37 @@ body {
   transform: scale(1.08);
 }
 
+.btn-step {
+  width: 28px;
+  height: 28px;
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  color: var(--text-main);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  transition: all 0.15s ease;
+}
+.btn-step:hover {
+  background: var(--bg-surface-hover);
+  color: #fff;
+  border-color: var(--accent-orange);
+}
+
+.playback-count-badge {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--accent-cyan);
+  background: rgba(56, 189, 248, 0.1);
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  white-space: nowrap;
+}
+
 .speed-toggle {
   display: flex;
   gap: 2px;
@@ -1298,6 +1329,82 @@ body {
 }
 .chart-canvas-wrap.sm { height: 260px; }
 .chart-canvas-wrap.md { height: 320px; }
+.chart-canvas-wrap.large { height: 420px; }
+
+/* Model Selector Panel & Calibration KPI Grid */
+.model-selector-panel {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.model-select-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.calibration-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.cal-kpi-card {
+  background: var(--bg-space);
+  border: 1px solid var(--border-subtle);
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.kpi-sublabel {
+  font-size: 10px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  font-weight: 700;
+}
+
+.kpi-main-val {
+  font-family: var(--font-heading);
+  font-size: 16px;
+  font-weight: 800;
+  color: #fff;
+}
+.kpi-main-val.highlight { color: var(--accent-green); }
+.kpi-main-val.mono { font-family: var(--font-mono); font-size: 13px; }
+
+/* Research Advisory Banner */
+.research-advisory-banner {
+  background: rgba(11, 61, 145, 0.25);
+  border-left: 4px solid var(--accent-cyan);
+  padding: 12px 16px;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 12px;
+  color: #bae6fd;
+}
+.research-advisory-banner .adv-icon {
+  font-size: 18px;
+  color: var(--accent-cyan);
+  flex-shrink: 0;
+}
+
+.model-badge-pill {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent-yellow);
+  background: rgba(250, 204, 21, 0.12);
+  border: 1px solid rgba(250, 204, 21, 0.3);
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+}
 
 .chart-insight-strip {
   background: var(--bg-space);

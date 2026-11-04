@@ -107,3 +107,4 @@
 
 **Q3: How does FireBridge handle data uncertainty?**  
 *Answer:* Every harmonized estimate includes dynamic 95% confidence intervals ($\pm 1.96 \cdot \text{SE}$) calculated via Gaussian error propagation, taking into account sensor regression standard error and Poisson observation variance.
+
