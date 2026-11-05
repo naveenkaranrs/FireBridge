@@ -60,6 +60,16 @@
         <span class="telemetry-val" id="utc-clock">--:--:-- UTC</span>
       </div>
       <div class="header-actions">
+        <button class="btn btn-sm btn-tour-pulse" id="btn-launch-tour" title="Launch 4-Step Animated Mission Briefing for NASA Space Apps Judges">
+          <span class="tour-dot"></span>
+          <span class="tour-text">▶ Mission Briefing (Judge Mode)</span>
+        </button>
+        <button class="btn btn-sm btn-ghost sound-toggle" id="btn-sound-toggle" title="Toggle Synthesizer Telemetry Audio">
+          <span id="sound-icon">🔊</span> <span id="sound-status">Sound ON</span>
+        </button>
+        <button class="btn btn-sm btn-ghost" id="btn-toggle-orbit" title="Toggle Orbit Telemetry HUD">
+          🛰️ Orbit HUD
+        </button>
         <button class="btn btn-sm btn-secondary" id="btn-open-sync-modal" title="Connect to NASA FIRMS Live Gateway">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>
           NASA FIRMS Live
@@ -96,6 +106,83 @@
     </div>
   </nav>
 
+  <!-- High-Tech Satellite Constellation Orbit Radar & Overpass HUD -->
+  <section class="constellation-tracker-hud glass-panel" id="orbit-tracker-bar">
+    <div class="hud-orbit-left">
+      <!-- Mini Circular Orbital Radar Scope -->
+      <div class="mini-radar-container">
+        <div class="mini-radar-scope">
+          <div class="radar-scanline"></div>
+          <div class="radar-crosshairs"></div>
+          <div class="radar-blip blip-terra" id="blip-terra" title="Terra (MODIS) 10:30 AM Desc"></div>
+          <div class="radar-blip blip-aqua" id="blip-aqua" title="Aqua (MODIS) 01:30 PM Asc"></div>
+          <div class="radar-blip blip-snpp" id="blip-snpp" title="Suomi-NPP (VIIRS) 01:30 PM Asc"></div>
+          <div class="radar-blip blip-noaa20" id="blip-noaa20" title="NOAA-20 (VIIRS) 01:30 PM Asc"></div>
+          <div class="radar-blip blip-noaa21" id="blip-noaa21" title="NOAA-21 (VIIRS) 01:30 PM Asc"></div>
+        </div>
+        <div class="radar-info">
+          <span class="radar-tag">ORBIT RADAR</span>
+          <span class="radar-velocity"><span class="live-dot-glow green"></span> 7.54 km/s</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 5 Spacecraft Status Pills -->
+    <div class="hud-orbit-satellites">
+      <div class="sat-pill" data-sat="terra" title="MODIS aboard Terra. Sun-synchronous 705 km, 10:30 AM equator crossing.">
+        <span class="sat-beacon modis"></span>
+        <div class="sat-meta">
+          <div class="sat-name">Terra (MODIS)</div>
+          <div class="sat-orbit">705 km &bull; 10:30 Desc &bull; 1km</div>
+        </div>
+        <span class="sat-status-badge nominal">NOMINAL</span>
+      </div>
+
+      <div class="sat-pill" data-sat="aqua" title="MODIS aboard Aqua. Sun-synchronous 705 km, 01:30 PM equator crossing.">
+        <span class="sat-beacon modis"></span>
+        <div class="sat-meta">
+          <div class="sat-name">Aqua (MODIS)</div>
+          <div class="sat-orbit">705 km &bull; 01:30 Asc &bull; 1km</div>
+        </div>
+        <span class="sat-status-badge nominal">NOMINAL</span>
+      </div>
+
+      <div class="sat-pill" data-sat="snpp" title="VIIRS aboard Suomi-NPP. Sun-synchronous 824 km, 01:30 PM equator crossing.">
+        <span class="sat-beacon viirs"></span>
+        <div class="sat-meta">
+          <div class="sat-name">S-NPP (VIIRS)</div>
+          <div class="sat-orbit">824 km &bull; 01:30 Asc &bull; 375m</div>
+        </div>
+        <span class="sat-status-badge active">ACTIVE</span>
+      </div>
+
+      <div class="sat-pill" data-sat="noaa20" title="VIIRS aboard NOAA-20 (JPSS-1). 824 km, half-orbit separated from S-NPP.">
+        <span class="sat-beacon viirs"></span>
+        <div class="sat-meta">
+          <div class="sat-name">NOAA-20 (VIIRS)</div>
+          <div class="sat-orbit">824 km &bull; 01:30 Asc &bull; 375m</div>
+        </div>
+        <span class="sat-status-badge prime">PRIME 375M</span>
+      </div>
+
+      <div class="sat-pill" data-sat="noaa21" title="VIIRS aboard NOAA-21 (JPSS-2). Operational high-fidelity 375m payload.">
+        <span class="sat-beacon viirs"></span>
+        <div class="sat-meta">
+          <div class="sat-name">NOAA-21 (VIIRS)</div>
+          <div class="sat-orbit">824 km &bull; 01:30 Asc &bull; 375m</div>
+        </div>
+        <span class="sat-status-badge prime">PRIME 375M</span>
+      </div>
+    </div>
+
+    <!-- Live Overpass Prediction Box -->
+    <div class="hud-orbit-overpass">
+      <div class="overpass-title">NEXT AOI OVERPASS</div>
+      <div class="overpass-countdown mono" id="overpass-countdown-timer">00h 14m 28s</div>
+      <div class="overpass-target" id="overpass-target-sat">NOAA-20 VIIRS (375m Nadir Swath)</div>
+    </div>
+  </section>
+
   <!-- Global Biome Selector Bar -->
   <section class="global-control-bar glass-panel">
     <div class="biome-selector-wrap">
@@ -124,6 +211,38 @@
     <section class="app-view active" id="view-overview">
       <div class="overview-grid">
         
+        <!-- NASA Space Apps Judge Mission Briefing Hero Card -->
+        <div class="glass-panel judge-hero-card full-width">
+          <div class="judge-hero-content">
+            <div class="judge-hero-badge">
+              <span class="live-dot-glow"></span>
+              NASA SPACE APPS CHALLENGE 2026 &bull; EVALUATION READY
+            </div>
+            <h2 class="judge-hero-title">Experience FireBridge in Action: 4-Step Interactive Mission Briefing</h2>
+            <p class="judge-hero-desc">
+              Short on time? Take the guided walkthrough designed specifically for Space Apps judges. Watch the simulated 2012 sensor cliff, interact with the subpixel optical resolution simulator, inspect the Theil-Sen regression calibration, and review planetary carbon impact in under 3 minutes.
+            </p>
+            <div class="judge-hero-actions">
+              <button class="btn btn-md btn-tour-primary" id="btn-hero-launch-tour">
+                <span class="pulse-ring-btn"></span>
+                ▶ Launch Guided Mission Briefing (Judge Mode)
+              </button>
+              <button class="btn btn-md btn-secondary" id="btn-hero-jump-simulator">
+                🔬 Open Optical Resolution Split Simulator
+              </button>
+              <button class="btn btn-md btn-secondary" id="btn-hero-jump-map">
+                🗺️ Explore Geospatial Map
+              </button>
+            </div>
+          </div>
+          <div class="judge-hero-hud-preview">
+            <div class="hud-phase-step"><span class="step-num">01</span> The 2012 Sensor Cliff</div>
+            <div class="hud-phase-step"><span class="step-num">02</span> 1km vs 375m Optics</div>
+            <div class="hud-phase-step"><span class="step-num">03</span> Harmonization Model</div>
+            <div class="hud-phase-step"><span class="step-num">04</span> Carbon & Climatology</div>
+          </div>
+        </div>
+
         <!-- Live Hazard Alert Banner -->
         <div class="glass-panel alert-radar-banner full-width">
           <div class="radar-status-group">
@@ -386,6 +505,11 @@
           <!-- Map Canvas Container -->
           <div id="aoi-map" class="aoi-map-full"></div>
 
+          <!-- Radar Scanline Overlay Effect -->
+          <div class="map-radar-overlay active" id="map-radar-sweep">
+            <div class="radar-scanline-beam"></div>
+          </div>
+
           <!-- Map Loading State Overlay -->
           <div class="map-loading-overlay" id="map-loading-spinner" style="display: none;">
             <div class="spinner"></div>
@@ -414,6 +538,7 @@
               <span class="hud-label">Cursor Coordinates:</span>
               <span class="hud-val mono" id="map-hud-cursor">--&deg;, --&deg;</span>
             </div>
+            <button class="btn btn-xs btn-ghost active" id="btn-toggle-radar-fx" title="Toggle Atmospheric Radar Scan Overlay">🛰️ Radar FX</button>
             <button class="btn btn-xs btn-ghost" id="btn-fullscreen-map" title="Toggle Fullscreen">&#x26F6; Fullscreen</button>
           </div>
 
@@ -602,6 +727,121 @@
     <section class="app-view" id="view-comparison">
       <div class="comparison-view-container">
         
+        <!-- INTERACTIVE OPTICAL RESOLUTION SPLIT-SCREEN SIMULATOR (TASK 2) -->
+        <div class="glass-panel optical-simulator-card" id="optical-simulator-card">
+          <div class="panel-header">
+            <div class="sim-header-titles">
+              <span class="sim-icon">🔬</span>
+              <div>
+                <h3 class="panel-title">Interactive Optical Resolution Simulator: The Subpixel Wildfire Front</h3>
+                <p class="panel-subtitle">Slide across the simulated active fire front to examine why VIIRS 375m detects 7x more flame fronts than MODIS 1km, and how FireBridge Point-Spread Function (PSF) convolution harmonizes the discontinuity.</p>
+              </div>
+            </div>
+            <div class="sim-header-controls">
+              <div class="segmented-control sm" id="sim-mode-toggle">
+                <button class="seg-btn active" data-sim="raw">1. Raw Optical Split (1km vs 375m)</button>
+                <button class="seg-btn" data-sim="psf">2. FireBridge PSF Convolution</button>
+                <button class="seg-btn" data-sim="sofiev">3. Sofiev &ge; 3.7 MW Filter</button>
+              </div>
+              <button class="btn btn-xs btn-primary" id="btn-sim-auto-sweep">
+                <span class="sweep-icon">⇋</span> Auto-Sweep Demo
+              </button>
+            </div>
+          </div>
+
+          <!-- Split Screen Simulator Viewport -->
+          <div class="split-viewport-wrapper">
+            <div class="split-viewport" id="split-viewport-container">
+              
+              <!-- Background Scene: Wildfire Infrared Thermal Simulation -->
+              <div class="sim-thermal-scene">
+                <!-- Flame nodes / spot fires in the terrain -->
+                <div class="thermal-fire-front front-main" style="top: 45%; left: 48%;"></div>
+                <div class="thermal-fire-front front-flank-1" style="top: 38%; left: 35%;"></div>
+                <div class="thermal-fire-front front-flank-2" style="top: 55%; left: 62%;"></div>
+                <div class="thermal-fire-spot spot-1" style="top: 25%; left: 22%;"></div>
+                <div class="thermal-fire-spot spot-2" style="top: 68%; left: 28%;"></div>
+                <div class="thermal-fire-spot spot-3" style="top: 22%; left: 70%;"></div>
+                <div class="thermal-fire-spot spot-4" style="top: 72%; left: 75%;"></div>
+                <div class="thermal-fire-spot spot-5" style="top: 50%; left: 82%;"></div>
+              </div>
+
+              <!-- VIIRS 375m High-Resolution Layer (Full Width Underlay) -->
+              <div class="sim-layer sim-layer-viirs">
+                <div class="pixel-grid grid-375m"></div>
+                <!-- 9 Distinct VIIRS Detection Outlines -->
+                <div class="viirs-detection-box" style="top: 42%; left: 45%;" title="VIIRS #1: 5.8 MW (Core Front)"><span class="viirs-tag">375m (5.8 MW)</span></div>
+                <div class="viirs-detection-box" style="top: 35%; left: 32%;" title="VIIRS #2: 2.4 MW (Flank N)"><span class="viirs-tag">375m (2.4 MW)</span></div>
+                <div class="viirs-detection-box" style="top: 52%; left: 59%;" title="VIIRS #3: 3.1 MW (Flank S)"><span class="viirs-tag">375m (3.1 MW)</span></div>
+                <div class="viirs-detection-box" style="top: 22%; left: 19%;" title="VIIRS #4: 0.8 MW (Spot fire)"><span class="viirs-tag">375m (0.8 MW)</span></div>
+                <div class="viirs-detection-box" style="top: 65%; left: 25%;" title="VIIRS #5: 0.7 MW (Spot fire)"><span class="viirs-tag">375m (0.7 MW)</span></div>
+                <div class="viirs-detection-box" style="top: 19%; left: 67%;" title="VIIRS #6: 0.9 MW (Spot fire)"><span class="viirs-tag">375m (0.9 MW)</span></div>
+                <div class="viirs-detection-box" style="top: 69%; left: 72%;" title="VIIRS #7: 0.6 MW (Spot fire)"><span class="viirs-tag">375m (0.6 MW)</span></div>
+                <div class="viirs-detection-box" style="top: 47%; left: 79%;" title="VIIRS #8: 0.8 MW (Spot fire)"><span class="viirs-tag">375m (0.8 MW)</span></div>
+                <div class="viirs-detection-box" style="top: 48%; left: 48%;" title="VIIRS #9: 1.0 MW (Center Front)"><span class="viirs-tag">375m (1.0 MW)</span></div>
+
+                <div class="sim-badge viirs-badge">
+                  <span class="badge-title">VIIRS (375 m I-Band)</span>
+                  <span class="badge-stat">9 Hotspots &bull; 15.1 MW Total FRP &bull; 0.5 MW Cutoff</span>
+                </div>
+              </div>
+
+              <!-- MODIS 1000m Coarse Layer (Clipped to Slider Left) -->
+              <div class="sim-layer sim-layer-modis" id="sim-modis-clip-layer" style="width: 50%;">
+                <div class="pixel-grid grid-1000m"></div>
+                <div class="modis-blur-overlay"></div>
+                <!-- 1 Single Blurry MODIS 1km Detection -->
+                <div class="modis-detection-box" style="top: 25%; left: 25%;" title="MODIS #1: 14.2 MW (Coarse Integrated 1km Pixel)">
+                  <span class="modis-tag">MODIS 1km &bull; Integrated (14.2 MW)</span>
+                  <div class="modis-missed-label">8 Subpixel Spot Fires Missed (&lt;3.7 MW)</div>
+                </div>
+
+                <div class="sim-badge modis-badge">
+                  <span class="badge-title">MODIS (1,000 m M-Band)</span>
+                  <span class="badge-stat">1 Hotspot &bull; 14.2 MW FRP &bull; 3.7 MW Cutoff</span>
+                </div>
+              </div>
+
+              <!-- Draggable Divider Line & Handle -->
+              <div class="split-divider-line" id="sim-divider-line" style="left: 50%;">
+                <div class="split-divider-handle" id="sim-divider-handle">
+                  <span class="handle-arrow">◀</span>
+                  <span class="handle-icon">⇋</span>
+                  <span class="handle-arrow">▶</span>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- Interactive Slider Input for Touch & Smooth Dragging -->
+            <input type="range" min="0" max="100" value="50" class="split-range-input" id="sim-range-input" aria-label="Optical Split Slider">
+          </div>
+
+          <!-- Simulator Telemetry Callout & Physics Explanation -->
+          <div class="sim-telemetry-row">
+            <div class="sim-tel-card">
+              <span class="tel-label">Spatial Resolution:</span>
+              <span class="tel-val"><strong class="modis-color">1,000 m</strong> vs <strong class="viirs-color">375 m</strong></span>
+              <span class="tel-sub">7.11&times; Pixel Area Ratio (Am / Av)</span>
+            </div>
+            <div class="sim-tel-card">
+              <span class="tel-label">Detected Flame Fronts:</span>
+              <span class="tel-val highlight"><strong class="modis-color">1</strong> vs <strong class="viirs-color">9</strong> (+800% count artifact)</span>
+              <span class="tel-sub">Subpixel fragmentation</span>
+            </div>
+            <div class="sim-tel-card">
+              <span class="tel-label">Integrated FRP Energy:</span>
+              <span class="tel-val">14.2 MW vs 15.1 MW</span>
+              <span class="tel-sub">Energy Conserved (Within 6.0%)</span>
+            </div>
+            <div class="sim-tel-card">
+              <span class="tel-label">FireBridge Harmonized Output:</span>
+              <span class="tel-val harmonized-color" id="sim-harmonized-stat">1.03 MODIS-Eq Events</span>
+              <span class="tel-sub">Residual Bias: -0.03 events</span>
+            </div>
+          </div>
+        </div>
+
         <!-- Sensor Comparison Table -->
         <div class="glass-panel comp-card">
           <div class="panel-header">
@@ -1372,6 +1612,75 @@
       <div class="modal-footer">
         <button class="btn btn-secondary" id="btn-cancel-aoi">Cancel</button>
         <button class="btn btn-primary" id="btn-submit-aoi">Save AOI</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 1-Click Judge Guided Mission Briefing HUD (Floating Glass Overlay) -->
+  <div class="judge-briefing-overlay" id="judge-briefing-hud" style="display: none;">
+    <div class="judge-briefing-window glass-panel">
+      <!-- HUD Top Telemetry Bar -->
+      <div class="hud-window-topbar">
+        <div class="hud-phase-indicator">
+          <span class="live-dot-glow"></span>
+          <span class="hud-phase-label" id="tour-phase-tag">MISSION PHASE 1 / 4</span>
+          <span class="hud-phase-name" id="tour-phase-title">The 2012 Sensor Discontinuity Dilemma</span>
+        </div>
+        <div class="hud-audio-visualizer" id="tour-audio-bars">
+          <span class="audio-bar"></span>
+          <span class="audio-bar"></span>
+          <span class="audio-bar"></span>
+          <span class="audio-bar"></span>
+          <span class="audio-bar"></span>
+        </div>
+        <div class="hud-window-actions">
+          <button class="btn btn-xs btn-ghost" id="btn-tour-sound-toggle" title="Toggle Tour Sound">🔊 Sound</button>
+          <button class="btn btn-xs btn-ghost" id="btn-tour-close" title="Exit Guided Mission Briefing">✕ Exit</button>
+        </div>
+      </div>
+
+      <!-- HUD Content & Dynamic Typewriter -->
+      <div class="hud-window-content">
+        <div class="hud-narrative-box">
+          <div class="hud-typewriter-text" id="tour-typewriter-text">
+            Initializing NASA Mission Briefing...
+          </div>
+        </div>
+        <!-- Dynamic Telemetry Highlights for the active phase -->
+        <div class="hud-telemetry-strip" id="tour-telemetry-strip">
+          <div class="tour-tel-item">
+            <span class="tour-tel-label">Target Biome:</span>
+            <span class="tour-tel-val" id="tour-tel-biome">Northern California</span>
+          </div>
+          <div class="tour-tel-item">
+            <span class="tour-tel-label">Observed Anomaly:</span>
+            <span class="tour-tel-val highlight" id="tour-tel-stat">+3.4× Step-Jump</span>
+          </div>
+          <div class="tour-tel-item">
+            <span class="tour-tel-label">FireBridge Solution:</span>
+            <span class="tour-tel-val harmonized" id="tour-tel-sol">Theil-Sen Harmonization</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- HUD Bottom Navigation & Progress -->
+      <div class="hud-window-footer">
+        <div class="hud-progress-track">
+          <div class="hud-progress-bar" id="tour-progress-bar" style="width: 25%;"></div>
+        </div>
+        <div class="hud-controls-row">
+          <div class="hud-step-pills">
+            <button class="tour-step-pill active" data-step="1">1. 2012 Cliff</button>
+            <button class="tour-step-pill" data-step="2">2. Optics Split</button>
+            <button class="tour-step-pill" data-step="3">3. Theil-Sen Cal</button>
+            <button class="tour-step-pill" data-step="4">4. Carbon Impact</button>
+          </div>
+          <div class="hud-playback-buttons">
+            <button class="btn btn-sm btn-secondary" id="btn-tour-prev">◄ Prev</button>
+            <button class="btn btn-sm btn-secondary" id="btn-tour-autoplay">⏸ Pause (8s)</button>
+            <button class="btn btn-sm btn-primary" id="btn-tour-next">Next Phase ►</button>
+          </div>
+        </div>
       </div>
     </div>
   </div>

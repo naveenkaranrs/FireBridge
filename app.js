@@ -98,12 +98,92 @@ function interpolateMultiColor(stops, t) {
   return rgbToHex(r, g, b);
 }
 
+// --- WEB AUDIO API TELEMETRY SYNTHESIZER ---
+class FireBridgeAudio {
+  constructor() {
+    this.enabled = true;
+    this.ctx = null;
+  }
+  init() {
+    if (!this.ctx && (window.AudioContext || window.webkitAudioContext)) {
+      this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+  }
+  beep(freq = 880, type = 'sine', duration = 0.08, gainVal = 0.04) {
+    if (!this.enabled) return;
+    try {
+      this.init();
+      if (!this.ctx) return;
+      if (this.ctx.state === 'suspended') this.ctx.resume();
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+      gain.gain.setValueAtTime(gainVal, this.ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + duration);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start();
+      osc.stop(this.ctx.currentTime + duration);
+    } catch (e) {}
+  }
+  ping() { this.beep(1200, 'sine', 0.08, 0.025); }
+  click() { this.beep(520, 'triangle', 0.03, 0.02); }
+  success() {
+    this.beep(587.33, 'sine', 0.06, 0.03);
+    setTimeout(() => this.beep(880, 'sine', 0.1, 0.03), 70);
+  }
+  step() { this.beep(740, 'sine', 0.04, 0.02); }
+  toggle() {
+    this.enabled = !this.enabled;
+    return this.enabled;
+  }
+}
+const audioFX = new FireBridgeAudio();
+
+// --- ANIMATED NUMBER COUNTER ---
+function animateCounter(elOrId, targetVal, duration = 900, decimals = 0, prefix = '', suffix = '') {
+  const el = typeof elOrId === 'string' ? document.getElementById(elOrId) : elOrId;
+  if (!el) return;
+  const target = parseFloat(targetVal);
+  if (isNaN(target)) {
+    el.textContent = prefix + targetVal + suffix;
+    return;
+  }
+  const start = 0;
+  const startTime = performance.now();
+
+  function update(currentTime) {
+    const elapsed = currentTime - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    // Cubic ease-out
+    const ease = 1 - Math.pow(1 - progress, 3);
+    const current = start + (target - start) * ease;
+
+    let formatted;
+    if (decimals > 0) {
+      formatted = current.toFixed(decimals);
+    } else {
+      formatted = Math.round(current).toLocaleString();
+    }
+    el.textContent = `${prefix}${formatted}${suffix}`;
+
+    if (progress < 1) {
+      requestAnimationFrame(update);
+    }
+  }
+  requestAnimationFrame(update);
+}
+
 // --- INITIALIZATION ---
 document.addEventListener('DOMContentLoaded', async () => {
   initUtcClock();
   initRouter();
   initMap();
   setupGlobalEvents();
+  initConstellationOrbitTracker();
+  initOpticalSimulator();
+  initJudgeGuidedTour();
 
   // Load database from REST API with local fallback
   await loadDatabase();
@@ -286,11 +366,15 @@ function initMap() {
   });
 }
 
-// Fit map to bounding box
+// Fit map to bounding box with smooth cinematic transition
 function fitMapToBounds(bounds) {
   if (!state.map || !bounds) return;
   const [minLon, minLat, maxLon, maxLat] = bounds;
-  state.map.fitBounds([[minLat, minLon], [maxLat, maxLon]], { padding: [20, 20] });
+  if (typeof state.map.flyToBounds === 'function') {
+    state.map.flyToBounds([[minLat, minLon], [maxLat, maxLon]], { padding: [24, 24], duration: 1.5 });
+  } else {
+    state.map.fitBounds([[minLat, minLon], [maxLat, maxLon]], { padding: [20, 20] });
+  }
   
   const hudBounds = document.getElementById('map-hud-bounds');
   if (hudBounds) {
@@ -455,6 +539,21 @@ function renderMapHotspots(pts) {
     markers.push(marker);
   });
 
+  // Top active fire fronts get dynamic pulsing shockwaves
+  const topFires = pts.slice().sort((a, b) => (b.frp || 0) - (a.frp || 0)).slice(0, 6);
+  topFires.forEach(pt => {
+    const isViirs = (pt.raw_sensor_type || pt.sensor).includes('VIIRS');
+    const color = isViirs ? '#f97316' : '#38bdf8';
+    const pulseIcon = L.divIcon({
+      className: 'leaflet-pulse-icon',
+      iconSize: [20, 20],
+      iconAnchor: [10, 10],
+      html: `<span class="pulse-center-dot" style="background:${color}; color:${color};"></span><span class="pulse-shockwave" style="border-color:${color};"></span>`
+    });
+    const pulseMarker = L.marker([pt.latitude, pt.longitude], { icon: pulseIcon, interactive: false });
+    state.mapLayers.vectorGroup.addLayer(pulseMarker);
+  });
+
   if (state.mapFilters.visMode === 'clusters' && state.mapLayers.markerCluster) {
     state.mapLayers.markerCluster.addLayers(markers);
     state.map.addLayer(state.mapLayers.markerCluster);
@@ -463,7 +562,7 @@ function renderMapHotspots(pts) {
   }
 }
 
-// --- OVERVIEW KPIS (VIEW 1) ---
+// --- OVERVIEW KPIS (VIEW 1) WITH SMOOTH TELEMETRY COUNTUP ---
 function renderOverviewKpis() {
   const regionData = state.database[state.currentRegion];
   if (!regionData) return;
@@ -477,10 +576,10 @@ function renderOverviewKpis() {
   const biomassMt = (totalFrp * 0.000368 * 0.06).toFixed(1);
   const co2Tg = (biomassMt * 1.83).toFixed(1);
 
-  document.getElementById('kpi-ov-total-hotspots').textContent = Math.round(totalHarmonized).toLocaleString();
-  document.getElementById('kpi-ov-total-frp').textContent = (totalFrp / 1000).toFixed(2) + ' GW';
-  document.getElementById('ov-biomass').textContent = `${biomassMt} Mt`;
-  document.getElementById('ov-co2').textContent = `${co2Tg} Tg`;
+  animateCounter('kpi-ov-total-hotspots', totalHarmonized, 900, 0);
+  animateCounter('kpi-ov-total-frp', totalFrp / 1000, 900, 2, '', ' GW');
+  animateCounter('ov-biomass', parseFloat(biomassMt), 900, 1, '', ' Mt');
+  animateCounter('ov-co2', parseFloat(co2Tg), 900, 1, '', ' Tg');
 
   const hazardBadge = document.getElementById('ov-hazard-badge');
   if (hazardBadge && latest) {
@@ -1394,6 +1493,40 @@ function setupGlobalEvents() {
     fitMapToBounds(state.mapFilters.customBounds);
   });
 
+  // Sound FX Toggle in header & tour HUD
+  const soundToggleBtn = document.getElementById('btn-sound-toggle');
+  const soundStatus = document.getElementById('sound-status');
+  const soundIcon = document.getElementById('sound-icon');
+  if (soundToggleBtn) {
+    soundToggleBtn.addEventListener('click', () => {
+      const isEnabled = audioFX.toggle();
+      if (soundStatus) soundStatus.textContent = isEnabled ? 'Sound ON' : 'Sound OFF';
+      if (soundIcon) soundIcon.textContent = isEnabled ? '🔊' : '🔇';
+      soundToggleBtn.classList.toggle('muted', !isEnabled);
+      if (isEnabled) audioFX.ping();
+    });
+  }
+
+  const tourSoundBtn = document.getElementById('btn-tour-sound-toggle');
+  if (tourSoundBtn) {
+    tourSoundBtn.addEventListener('click', () => {
+      const isEnabled = audioFX.toggle();
+      tourSoundBtn.textContent = isEnabled ? '🔊 Sound' : '🔇 Muted';
+      if (isEnabled) audioFX.ping();
+    });
+  }
+
+  // Radar FX toggle
+  const radarFxBtn = document.getElementById('btn-toggle-radar-fx');
+  const radarOverlay = document.getElementById('map-radar-sweep');
+  if (radarFxBtn && radarOverlay) {
+    radarFxBtn.addEventListener('click', () => {
+      audioFX.click();
+      radarOverlay.classList.toggle('active');
+      radarFxBtn.classList.toggle('active');
+    });
+  }
+
   // Modal Dialogs setup
   setupModals();
 }
@@ -1472,4 +1605,418 @@ function setupModals() {
       alert(`Save error: ${err.message}`);
     }
   });
+}
+
+// ==========================================================================
+// TASK 1: SATELLITE CONSTELLATION ORBIT RADAR & OVERPASS HUD CONTROLLER
+// ==========================================================================
+function initConstellationOrbitTracker() {
+  const countdownEl = document.getElementById('overpass-countdown-timer');
+  const targetEl = document.getElementById('overpass-target-sat');
+  const toggleBtn = document.getElementById('btn-toggle-orbit');
+  const trackerBar = document.getElementById('orbit-tracker-bar');
+
+  // Toggle Orbit HUD collapse/expand
+  if (toggleBtn && trackerBar) {
+    toggleBtn.addEventListener('click', () => {
+      audioFX.click();
+      trackerBar.classList.toggle('collapsed');
+      toggleBtn.classList.toggle('active');
+    });
+  }
+
+  // Interactive satellite pills click to filter/highlight
+  document.querySelectorAll('.sat-pill').forEach(pill => {
+    pill.addEventListener('click', () => {
+      audioFX.click();
+      const satKey = pill.dataset.sat;
+      const cb = document.getElementById(`layer-toggle-${satKey}`);
+      if (cb) {
+        cb.checked = !cb.checked;
+        cb.dispatchEvent(new Event('change'));
+      }
+      pill.classList.toggle('highlighted');
+    });
+  });
+
+  // Dynamic Orbit Countdown Simulation
+  const SATELLITES_LIST = [
+    { name: 'NOAA-20 VIIRS', swath: '375m Nadir Swath' },
+    { name: 'MODIS Aqua', swath: '1km Afternoon Overpass' },
+    { name: 'VIIRS Suomi-NPP', swath: '375m High-Resolution Scan' },
+    { name: 'MODIS Terra', swath: '1km Morning Overpass' },
+    { name: 'NOAA-21 VIIRS', swath: '375m JPSS-2 Swath' }
+  ];
+
+  let simTimeSeconds = 868; // 14m 28s initial
+
+  function tickCountdown() {
+    if (simTimeSeconds > 0) {
+      simTimeSeconds--;
+    } else {
+      simTimeSeconds = Math.floor(Math.random() * 1200) + 600;
+      audioFX.ping();
+      const nextSat = SATELLITES_LIST[Math.floor(Math.random() * SATELLITES_LIST.length)];
+      if (targetEl) targetEl.textContent = `${nextSat.name} (${nextSat.swath})`;
+    }
+
+    if (countdownEl) {
+      const h = Math.floor(simTimeSeconds / 3600);
+      const m = Math.floor((simTimeSeconds % 3600) / 60);
+      const s = simTimeSeconds % 60;
+      const pad = n => String(n).padStart(2, '0');
+      countdownEl.textContent = `${pad(h)}h ${pad(m)}m ${pad(s)}s`;
+    }
+  }
+
+  setInterval(tickCountdown, 1000);
+}
+
+// ==========================================================================
+// TASK 2: INTERACTIVE OPTICAL RESOLUTION SPLIT-SCREEN SIMULATOR
+// ==========================================================================
+function initOpticalSimulator() {
+  const rangeInp = document.getElementById('sim-range-input');
+  const modisClip = document.getElementById('sim-modis-clip-layer');
+  const dividerLine = document.getElementById('sim-divider-line');
+  const autoSweepBtn = document.getElementById('btn-sim-auto-sweep');
+  const modeToggle = document.getElementById('sim-mode-toggle');
+  const harmonizedStat = document.getElementById('sim-harmonized-stat');
+
+  if (!rangeInp || !modisClip || !dividerLine) return;
+
+  let isAutoSweeping = false;
+  let sweepAnimationId = null;
+  let sweepAngle = 0;
+
+  function updateSplit(pct) {
+    const clamped = Math.max(0, Math.min(100, pct));
+    modisClip.style.width = clamped + '%';
+    dividerLine.style.left = clamped + '%';
+    rangeInp.value = clamped;
+  }
+
+  rangeInp.addEventListener('input', (e) => {
+    if (isAutoSweeping) stopAutoSweep();
+    updateSplit(parseFloat(e.target.value));
+  });
+
+  // Auto-Sweep Demo using requestAnimationFrame
+  function sweepStep() {
+    sweepAngle += 0.025;
+    const pct = 50 + 38 * Math.sin(sweepAngle);
+    updateSplit(pct);
+    if (isAutoSweeping) {
+      sweepAnimationId = requestAnimationFrame(sweepStep);
+    }
+  }
+
+  function startAutoSweep() {
+    isAutoSweeping = true;
+    if (autoSweepBtn) {
+      autoSweepBtn.classList.add('active');
+      autoSweepBtn.innerHTML = '<span class="sweep-icon">⏸</span> Pause Auto-Sweep';
+    }
+    sweepAnimationId = requestAnimationFrame(sweepStep);
+    audioFX.step();
+  }
+
+  function stopAutoSweep() {
+    isAutoSweeping = false;
+    if (autoSweepBtn) {
+      autoSweepBtn.classList.remove('active');
+      autoSweepBtn.innerHTML = '<span class="sweep-icon">⇋</span> Auto-Sweep Demo';
+    }
+    if (sweepAnimationId) cancelAnimationFrame(sweepAnimationId);
+  }
+
+  if (autoSweepBtn) {
+    autoSweepBtn.addEventListener('click', () => {
+      audioFX.click();
+      if (isAutoSweeping) stopAutoSweep();
+      else startAutoSweep();
+    });
+  }
+
+  // Mode Toggles (Raw, PSF, Sofiev)
+  if (modeToggle) {
+    modeToggle.addEventListener('click', (e) => {
+      const btn = e.target.closest('.seg-btn');
+      if (!btn) return;
+      audioFX.click();
+      modeToggle.querySelectorAll('.seg-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+
+      const mode = btn.dataset.sim;
+      const viirsLayer = document.querySelector('.sim-layer-viirs');
+      const viirsBoxes = document.querySelectorAll('.viirs-detection-box');
+
+      if (mode === 'raw') {
+        if (viirsLayer) viirsLayer.style.filter = 'none';
+        viirsBoxes.forEach(b => b.style.opacity = '1');
+        if (harmonizedStat) harmonizedStat.textContent = '1.03 MODIS-Eq Events';
+      } else if (mode === 'psf') {
+        // Point Spread Function Gaussian convolution representation
+        if (viirsLayer) viirsLayer.style.filter = 'drop-shadow(0 0 16px rgba(249, 115, 22, 0.7))';
+        viirsBoxes.forEach(b => b.style.opacity = '0.9');
+        if (harmonizedStat) harmonizedStat.textContent = 'PSF Matched (1.0000 R²)';
+      } else if (mode === 'sofiev') {
+        // Sofiev >= 3.7 MW filter: small spot fires (< 3.7 MW) dim out
+        if (viirsLayer) viirsLayer.style.filter = 'none';
+        viirsBoxes.forEach(b => {
+          const isSmall = b.title.includes('Spot fire') || b.title.includes('2.4 MW') || b.title.includes('3.1 MW') || b.title.includes('1.0 MW');
+          b.style.opacity = isSmall ? '0.15' : '1';
+        });
+        if (harmonizedStat) harmonizedStat.textContent = 'Energy Filtered (1 Event)';
+      }
+    });
+  }
+
+  // Expose auto-sweep for guided tour
+  window.fireBridgeSim = {
+    startAutoSweep,
+    stopAutoSweep,
+    updateSplit
+  };
+}
+
+// ==========================================================================
+// TASK 4: 1-CLICK JUDGE GUIDED MISSION BRIEFING CONTROLLER
+// ==========================================================================
+function initJudgeGuidedTour() {
+  const hud = document.getElementById('judge-briefing-hud');
+  const phaseTag = document.getElementById('tour-phase-tag');
+  const phaseTitle = document.getElementById('tour-phase-title');
+  const typewriterText = document.getElementById('tour-typewriter-text');
+  const telBiome = document.getElementById('tour-tel-biome');
+  const telStat = document.getElementById('tour-tel-stat');
+  const telSol = document.getElementById('tour-tel-sol');
+  const progressBar = document.getElementById('tour-progress-bar');
+  const prevBtn = document.getElementById('btn-tour-prev');
+  const nextBtn = document.getElementById('btn-tour-next');
+  const autoplayBtn = document.getElementById('btn-tour-autoplay');
+  const closeBtn = document.getElementById('btn-tour-close');
+  const stepPills = document.querySelectorAll('.tour-step-pill');
+
+  if (!hud) return;
+
+  const PHASES = [
+    {
+      step: 1,
+      tag: 'MISSION PHASE 1 / 4',
+      title: 'The 2012 Sensor Discontinuity Dilemma',
+      view: 'map',
+      biome: 'california',
+      stat: '+3.4× Artificial Jump',
+      solution: 'Theil-Sen Calibration',
+      progress: 25,
+      narrative: '<strong>The Problem:</strong> Between 2000 and 2011, MODIS 1km provided the baseline active fire record. In 2012, VIIRS 375m entered service. Notice the immediate <strong>+3.4× step-jump in detected hotspots</strong>. Naive long-term analysis mistakes this sensor upgrade for catastrophic climate escalation.',
+      action: () => {
+        window.location.hash = '#map';
+        updateActiveRegion('california');
+        if (state.map) {
+          state.map.flyTo([39.8, -121.6], 8, { duration: 1.5 });
+        }
+        const scrubber = document.getElementById('time-scrubber');
+        if (scrubber) {
+          scrubber.value = 46;
+          scrubber.dispatchEvent(new Event('input'));
+        }
+      }
+    },
+    {
+      step: 2,
+      tag: 'MISSION PHASE 2 / 4',
+      title: 'Subpixel Optical Resolution Physics',
+      view: 'comparison',
+      biome: 'california',
+      stat: '1,000m vs 375m Footprint',
+      solution: 'PSF Energy Conservation (94%)',
+      progress: 50,
+      narrative: '<strong>Subpixel Geometry:</strong> VIIRS 375m pixels have <strong>7.11× smaller area</strong> than MODIS 1km pixels, and detect fires down to 0.5 MW (vs 3.7 MW for MODIS). A single 1km MODIS pixel actually holds 7+ flaming subpixel nodes! While counts jump +800%, total radiative energy is conserved within 6%.',
+      action: () => {
+        window.location.hash = '#comparison';
+        setTimeout(() => {
+          const simCard = document.getElementById('optical-simulator-card');
+          if (simCard) simCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          if (window.fireBridgeSim) window.fireBridgeSim.startAutoSweep();
+        }, 200);
+      }
+    },
+    {
+      step: 3,
+      tag: 'MISSION PHASE 3 / 4',
+      title: 'Harmonization Pipeline & Statistical Fit',
+      view: 'comparison',
+      biome: 'california',
+      stat: 'R² = 0.9890 (OLS & Theil-Sen)',
+      solution: 'Residual Bias: +0.12 events/mo',
+      progress: 75,
+      narrative: '<strong>The Scientific Solution:</strong> FireBridge cross-calibrates 120 coincident overlap months (2012–2021). The Theil-Sen Median Estimator reduces sensor bias from +2,378 events/month down to <strong>+0.12 events/month (paired t-test p = 0.9998)</strong>, completely eliminating the step-jump artifact.',
+      action: () => {
+        window.location.hash = '#comparison';
+        if (window.fireBridgeSim) window.fireBridgeSim.stopAutoSweep();
+        const modelSel = document.getElementById('comp-model-selector');
+        if (modelSel) {
+          modelSel.value = 'robust';
+          modelSel.dispatchEvent(new Event('change'));
+        }
+        setTimeout(() => {
+          const modelPanel = document.querySelector('.model-selector-panel');
+          if (modelPanel) modelPanel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 200);
+      }
+    },
+    {
+      step: 4,
+      tag: 'MISSION PHASE 4 / 4',
+      title: 'Operational Climatology & Carbon Tracking',
+      view: 'calendar',
+      biome: 'california',
+      stat: '+34 Days Season Extension',
+      solution: '27.2 Tg CO₂ Atmospheric Budget',
+      progress: 100,
+      narrative: '<strong>Operational Impact:</strong> FireBridge enables a unified 26-year continuous record (2000–2026). Firefighters track true perimeter growth; disaster managers receive <strong>Copernicus GWIS Tier 5 Anomaly warnings</strong>; and climate researchers calculate accurate biomass burning carbon budgets without sensor distortion.',
+      action: () => {
+        window.location.hash = '#calendar';
+        setTimeout(() => {
+          const calContainer = document.querySelector('.calendar-view-container');
+          if (calContainer) calContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 200);
+      }
+    }
+  ];
+
+  let currentPhaseIndex = 0;
+  let autoPlayTimer = null;
+  let isAutoPlaying = true;
+
+  function typeText(text, container) {
+    container.innerHTML = text;
+    audioFX.ping();
+  }
+
+  function renderPhase(index) {
+    currentPhaseIndex = Math.max(0, Math.min(PHASES.length - 1, index));
+    const p = PHASES[currentPhaseIndex];
+
+    phaseTag.textContent = p.tag;
+    phaseTitle.textContent = p.title;
+    telBiome.textContent = p.biome.toUpperCase();
+    telStat.textContent = p.stat;
+    telSol.textContent = p.solution;
+    progressBar.style.width = p.progress + '%';
+
+    stepPills.forEach((pill, idx) => {
+      pill.classList.toggle('active', idx === currentPhaseIndex);
+    });
+
+    typeText(p.narrative, typewriterText);
+    p.action();
+
+    prevBtn.disabled = currentPhaseIndex === 0;
+    nextBtn.textContent = currentPhaseIndex === PHASES.length - 1 ? 'Finish Briefing ✓' : 'Next Phase ►';
+  }
+
+  function startAutoPlay() {
+    isAutoPlaying = true;
+    if (autoplayBtn) autoplayBtn.textContent = '⏸ Pause (8s)';
+    if (autoPlayTimer) clearInterval(autoPlayTimer);
+    autoPlayTimer = setInterval(() => {
+      if (currentPhaseIndex < PHASES.length - 1) {
+        renderPhase(currentPhaseIndex + 1);
+      } else {
+        stopAutoPlay();
+      }
+    }, 8000);
+  }
+
+  function stopAutoPlay() {
+    isAutoPlaying = false;
+    if (autoplayBtn) autoplayBtn.textContent = '▶ Auto-Play (8s)';
+    if (autoPlayTimer) clearInterval(autoPlayTimer);
+  }
+
+  function openTour() {
+    hud.style.display = 'block';
+    audioFX.success();
+    renderPhase(0);
+    startAutoPlay();
+  }
+
+  function closeTour() {
+    hud.style.display = 'none';
+    stopAutoPlay();
+    if (window.fireBridgeSim) window.fireBridgeSim.stopAutoSweep();
+  }
+
+  // Event Listeners for Tour
+  if (closeBtn) closeBtn.addEventListener('click', closeTour);
+  if (prevBtn) {
+    prevBtn.addEventListener('click', () => {
+      audioFX.click();
+      stopAutoPlay();
+      renderPhase(currentPhaseIndex - 1);
+    });
+  }
+  if (nextBtn) {
+    nextBtn.addEventListener('click', () => {
+      audioFX.click();
+      stopAutoPlay();
+      if (currentPhaseIndex < PHASES.length - 1) {
+        renderPhase(currentPhaseIndex + 1);
+      } else {
+        closeTour();
+      }
+    });
+  }
+  if (autoplayBtn) {
+    autoplayBtn.addEventListener('click', () => {
+      audioFX.click();
+      if (isAutoPlaying) stopAutoPlay();
+      else startAutoPlay();
+    });
+  }
+  stepPills.forEach((pill, idx) => {
+    pill.addEventListener('click', () => {
+      audioFX.click();
+      stopAutoPlay();
+      renderPhase(idx);
+    });
+  });
+
+  // Launch buttons in Header & Hero
+  const headerLaunchBtn = document.getElementById('btn-launch-tour');
+  const heroLaunchBtn = document.getElementById('btn-hero-launch-tour');
+  if (headerLaunchBtn) headerLaunchBtn.addEventListener('click', openTour);
+  if (heroLaunchBtn) heroLaunchBtn.addEventListener('click', openTour);
+
+  // Jump buttons in Hero
+  const jumpSimBtn = document.getElementById('btn-hero-jump-simulator');
+  if (jumpSimBtn) {
+    jumpSimBtn.addEventListener('click', () => {
+      audioFX.click();
+      window.location.hash = '#comparison';
+      setTimeout(() => {
+        const sim = document.getElementById('optical-simulator-card');
+        if (sim) sim.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 150);
+    });
+  }
+
+  const jumpMapBtn = document.getElementById('btn-hero-jump-map');
+  if (jumpMapBtn) {
+    jumpMapBtn.addEventListener('click', () => {
+      audioFX.click();
+      window.location.hash = '#map';
+    });
+  }
+
+  // Expose global controller
+  window.fireBridgeTour = {
+    start: openTour,
+    stop: closeTour,
+    next: () => renderPhase(currentPhaseIndex + 1),
+    prev: () => renderPhase(currentPhaseIndex - 1)
+  };
 }

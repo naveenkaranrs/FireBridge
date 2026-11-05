@@ -1870,6 +1870,8 @@ body {
   .formulas-grid { grid-template-columns: 1fr; }
   .export-actions-grid { grid-template-columns: 1fr; }
   .team-grid { grid-template-columns: 1fr; }
+  .constellation-tracker-hud { flex-direction: column; align-items: flex-start; gap: 12px; }
+  .hud-orbit-satellites { flex-wrap: wrap; }
 }
 
 @media (max-width: 900px) {
@@ -1886,4 +1888,975 @@ body {
   .comp-charts-grid, .regional-charts-grid {
     grid-template-columns: 1fr;
   }
+  .judge-hero-card {
+    flex-direction: column;
+  }
+  .judge-hero-hud-preview {
+    display: none;
+  }
+  .sim-telemetry-row {
+    grid-template-columns: 1fr 1fr;
+  }
 }
+
+/* ==========================================================================
+   NASA MISSION CONTROL ANIMATIONS & HACKATHON WINNING ENHANCEMENTS
+   ========================================================================== */
+
+/* Glowing Dots & Pulsing Telemetry */
+.live-dot-glow {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 10px #22c55e, 0 0 18px rgba(34, 197, 94, 0.6);
+  animation: pulse-ring-glow 1.8s infinite ease-in-out;
+  flex-shrink: 0;
+}
+.live-dot-glow.alert {
+  background: #ef4444;
+  box-shadow: 0 0 10px #ef4444, 0 0 18px rgba(239, 68, 68, 0.6);
+}
+.live-dot-glow.cyan {
+  background: #38bdf8;
+  box-shadow: 0 0 10px #38bdf8, 0 0 18px rgba(56, 189, 248, 0.6);
+}
+@keyframes pulse-ring-glow {
+  0% { transform: scale(0.9); opacity: 0.8; }
+  50% { transform: scale(1.3); opacity: 1; filter: drop-shadow(0 0 8px currentColor); }
+  100% { transform: scale(0.9); opacity: 0.8; }
+}
+
+/* Header Mission Briefing Button */
+.btn-tour-pulse {
+  background: linear-gradient(135deg, rgba(11, 61, 145, 0.85) 0%, rgba(249, 115, 22, 0.85) 100%) !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  border: 1px solid rgba(249, 115, 22, 0.6) !important;
+  box-shadow: 0 0 16px rgba(249, 115, 22, 0.35) !important;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.25s ease !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+.btn-tour-pulse:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 0 24px rgba(249, 115, 22, 0.6) !important;
+  border-color: #f97316 !important;
+}
+.tour-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #facc15;
+  box-shadow: 0 0 8px #facc15;
+  animation: tour-dot-blink 1s infinite alternate;
+}
+@keyframes tour-dot-blink {
+  from { opacity: 0.4; }
+  to { opacity: 1; }
+}
+
+/* Audio toggle */
+.audio-toggle {
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+/* --------------------------------------------------------------------------
+   TASK 1: Satellite Constellation Orbit Radar & Overpass HUD Bar
+   -------------------------------------------------------------------------- */
+.constellation-tracker-hud {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 24px;
+  background: rgba(11, 16, 29, 0.95);
+  border-bottom: 1px solid rgba(56, 189, 248, 0.2);
+  backdrop-filter: blur(14px);
+  position: sticky;
+  top: 104px;
+  z-index: 850;
+  gap: 16px;
+  transition: max-height 0.3s ease, opacity 0.3s ease;
+}
+.constellation-tracker-hud.collapsed {
+  display: none;
+}
+
+/* Mini Orbital Radar Scope */
+.mini-radar-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.mini-radar-scope {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(16, 185, 129, 0.08) 0%, rgba(6, 78, 59, 0.25) 70%, rgba(2, 44, 34, 0.8) 100%);
+  border: 1.5px solid rgba(52, 211, 153, 0.5);
+  box-shadow: 0 0 12px rgba(52, 211, 153, 0.25), inset 0 0 8px rgba(52, 211, 153, 0.15);
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.radar-crosshairs {
+  position: absolute;
+  inset: 0;
+  background-image: 
+    linear-gradient(rgba(52, 211, 153, 0.2) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(52, 211, 153, 0.2) 1px, transparent 1px);
+  background-size: 26px 26px;
+  background-position: center center;
+}
+.radar-crosshairs::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px dashed rgba(52, 211, 153, 0.35);
+}
+.radar-scanline {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 26px;
+  height: 26px;
+  transform-origin: 0% 0%;
+  background: linear-gradient(45deg, rgba(52, 211, 153, 0.75) 0%, rgba(52, 211, 153, 0.1) 40%, transparent 60%);
+  border-radius: 0 100% 0 0;
+  animation: radar-sweep-rotate 3.2s linear infinite;
+  pointer-events: none;
+}
+@keyframes radar-sweep-rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Radar Target Satellite Blips */
+.radar-blip {
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  box-shadow: 0 0 6px currentColor;
+  transition: all 0.5s ease;
+}
+.blip-terra { top: 22%; left: 32%; background: #38bdf8; color: #38bdf8; animation: blip-pulse 2s infinite ease-in-out; }
+.blip-aqua { top: 68%; left: 62%; background: #38bdf8; color: #38bdf8; animation: blip-pulse 2.2s infinite ease-in-out 0.4s; }
+.blip-snpp { top: 35%; left: 70%; background: #f97316; color: #f97316; animation: blip-pulse 1.8s infinite ease-in-out 0.2s; }
+.blip-noaa20 { top: 58%; left: 24%; background: #f97316; color: #f97316; animation: blip-pulse 2.5s infinite ease-in-out 0.8s; }
+.blip-noaa21 { top: 76%; left: 45%; background: #facc15; color: #facc15; animation: blip-pulse 2.1s infinite ease-in-out 0.6s; }
+@keyframes blip-pulse {
+  0% { transform: scale(0.8); opacity: 0.5; }
+  50% { transform: scale(1.6); opacity: 1; }
+  100% { transform: scale(0.8); opacity: 0.5; }
+}
+
+.radar-info {
+  display: flex;
+  flex-direction: column;
+}
+.radar-tag {
+  font-family: var(--font-heading);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #34d399;
+}
+.radar-velocity {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.live-dot-glow.green {
+  background: #34d399;
+  box-shadow: 0 0 6px #34d399;
+}
+
+/* Constellation Satellite Cards */
+.hud-orbit-satellites {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-grow: 1;
+  justify-content: center;
+}
+.sat-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-sm);
+  padding: 5px 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.sat-pill:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(56, 189, 248, 0.4);
+  transform: translateY(-1px);
+}
+.sat-pill.highlighted {
+  border-color: var(--accent-orange);
+  background: rgba(249, 115, 22, 0.12);
+}
+.sat-beacon {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.sat-beacon.modis {
+  background: var(--modis-color);
+  box-shadow: 0 0 6px var(--modis-color);
+}
+.sat-beacon.viirs {
+  background: var(--viirs-color);
+  box-shadow: 0 0 6px var(--viirs-color);
+}
+.sat-meta {
+  display: flex;
+  flex-direction: column;
+}
+.sat-name {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-main);
+  line-height: 1.2;
+}
+.sat-orbit {
+  font-size: 9.5px;
+  font-family: var(--font-mono);
+  color: var(--text-dim);
+}
+.sat-status-badge {
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  font-weight: 700;
+  padding: 2px 5px;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+.sat-status-badge.nominal {
+  background: rgba(56, 189, 248, 0.15);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+}
+.sat-status-badge.active {
+  background: rgba(249, 115, 22, 0.15);
+  color: #f97316;
+  border: 1px solid rgba(249, 115, 22, 0.3);
+}
+.sat-status-badge.prime {
+  background: rgba(250, 204, 21, 0.15);
+  color: #facc15;
+  border: 1px solid rgba(250, 204, 21, 0.3);
+}
+
+/* Live Overpass Prediction Box */
+.hud-orbit-overpass {
+  background: rgba(16, 23, 40, 0.7);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  border-radius: var(--radius-sm);
+  padding: 6px 14px;
+  text-align: right;
+  flex-shrink: 0;
+}
+.overpass-title {
+  font-family: var(--font-heading);
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--accent-cyan);
+}
+.overpass-countdown {
+  font-size: 14px;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: 0.05em;
+  text-shadow: 0 0 10px rgba(56, 189, 248, 0.5);
+}
+.overpass-target {
+  font-size: 9.5px;
+  color: var(--text-dim);
+}
+
+/* --------------------------------------------------------------------------
+   Judge Mission Briefing Hero Banner (View 1)
+   -------------------------------------------------------------------------- */
+.judge-hero-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 24px 28px;
+  background: linear-gradient(135deg, rgba(11, 61, 145, 0.35) 0%, rgba(16, 23, 40, 0.9) 100%);
+  border: 1.5px solid rgba(56, 189, 248, 0.4);
+  box-shadow: 0 10px 40px -10px rgba(11, 61, 145, 0.5);
+  border-radius: var(--radius-lg);
+  position: relative;
+  overflow: hidden;
+}
+.judge-hero-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #38bdf8, #f97316, transparent);
+  animation: border-glint 4s linear infinite;
+}
+@keyframes border-glint {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.judge-hero-content {
+  flex: 1;
+}
+.judge-hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-heading);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: #38bdf8;
+  margin-bottom: 8px;
+}
+.judge-hero-title {
+  font-family: var(--font-heading);
+  font-size: 24px;
+  font-weight: 800;
+  color: #ffffff;
+  margin-bottom: 10px;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+}
+.judge-hero-desc {
+  font-size: 13.5px;
+  color: var(--text-muted);
+  max-width: 780px;
+  line-height: 1.6;
+  margin-bottom: 18px;
+}
+.judge-hero-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.btn-tour-primary {
+  background: linear-gradient(135deg, #0284c7 0%, #ea580c 100%) !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  padding: 10px 20px !important;
+  font-size: 13.5px !important;
+  border: 1px solid rgba(255, 255, 255, 0.25) !important;
+  box-shadow: 0 0 20px rgba(234, 88, 12, 0.4) !important;
+  position: relative;
+  transition: all 0.25s ease !important;
+}
+.btn-tour-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 30px rgba(234, 88, 12, 0.7) !important;
+}
+.judge-hero-hud-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: rgba(7, 10, 18, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 16px;
+  border-radius: var(--radius-md);
+  min-width: 220px;
+}
+.hud-phase-step {
+  font-size: 12px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.hud-phase-step .step-num {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  background: rgba(56, 189, 248, 0.15);
+  color: #38bdf8;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+/* --------------------------------------------------------------------------
+   TASK 2: Interactive Optical Resolution Split-Screen Simulator
+   -------------------------------------------------------------------------- */
+.optical-simulator-card {
+  margin-bottom: 24px;
+  position: relative;
+  overflow: hidden;
+}
+.sim-header-titles {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.sim-icon {
+  font-size: 24px;
+}
+.sim-header-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.split-viewport-wrapper {
+  position: relative;
+  margin: 16px 0;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
+  background: #050811;
+  user-select: none;
+}
+.split-viewport {
+  position: relative;
+  height: 380px;
+  width: 100%;
+  overflow: hidden;
+}
+
+/* Infrared Wildfire Thermal Scene */
+.sim-thermal-scene {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 50%, #1f1105 0%, #0d070e 55%, #05070e 100%);
+  overflow: hidden;
+}
+.thermal-fire-front {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(12px);
+  animation: flame-pulse 2.4s ease-in-out infinite alternate;
+}
+.front-main {
+  width: 120px;
+  height: 70px;
+  background: radial-gradient(circle, #ffedd5 0%, #f97316 45%, #ef4444 80%, transparent 100%);
+}
+.front-flank-1 {
+  width: 80px;
+  height: 50px;
+  background: radial-gradient(circle, #fef08a 0%, #ea580c 50%, transparent 100%);
+  animation-delay: 0.6s;
+}
+.front-flank-2 {
+  width: 90px;
+  height: 60px;
+  background: radial-gradient(circle, #ffedd5 0%, #f97316 45%, transparent 100%);
+  animation-delay: 1.2s;
+}
+.thermal-fire-spot {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #ffffff 0%, #f97316 60%, transparent 100%);
+  filter: blur(5px);
+  animation: spot-flicker 1.8s infinite alternate;
+}
+@keyframes flame-pulse {
+  0% { transform: scale(0.95); opacity: 0.85; }
+  100% { transform: scale(1.08); opacity: 1; }
+}
+@keyframes spot-flicker {
+  0% { opacity: 0.5; transform: scale(0.85); }
+  100% { opacity: 1; transform: scale(1.15); }
+}
+
+/* Simulator Sensor Layers */
+.sim-layer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+.sim-layer-viirs {
+  width: 100%;
+}
+.sim-layer-modis {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  overflow: hidden;
+  border-right: 2px solid #38bdf8;
+  z-index: 5;
+}
+
+/* Pixel Grids */
+.pixel-grid {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.grid-375m {
+  background-size: 32px 32px;
+  background-image: 
+    linear-gradient(to right, rgba(249, 115, 22, 0.12) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(249, 115, 22, 0.12) 1px, transparent 1px);
+}
+.grid-1000m {
+  background-size: 85px 85px;
+  background-image: 
+    linear-gradient(to right, rgba(56, 189, 248, 0.3) 2px, transparent 2px),
+    linear-gradient(to bottom, rgba(56, 189, 248, 0.3) 2px, transparent 2px);
+}
+.modis-blur-overlay {
+  position: absolute;
+  inset: 0;
+  backdrop-filter: blur(4px);
+  background: rgba(11, 16, 29, 0.25);
+  pointer-events: none;
+}
+
+/* Detection Bounding Boxes */
+.viirs-detection-box {
+  position: absolute;
+  width: 32px;
+  height: 32px;
+  border: 1.5px solid #f97316;
+  background: rgba(249, 115, 22, 0.25);
+  box-shadow: 0 0 10px rgba(249, 115, 22, 0.4);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+.viirs-detection-box:hover {
+  background: rgba(249, 115, 22, 0.5);
+  transform: scale(1.1);
+  z-index: 10;
+}
+.viirs-tag {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.7);
+  padding: 1px 3px;
+  white-space: nowrap;
+  transform: translateY(12px);
+}
+
+.modis-detection-box {
+  position: absolute;
+  width: 85px;
+  height: 85px;
+  border: 2px solid #38bdf8;
+  background: rgba(56, 189, 248, 0.25);
+  box-shadow: 0 0 16px rgba(56, 189, 248, 0.5);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 4px;
+}
+.modis-tag {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  color: #fff;
+  background: rgba(11, 61, 145, 0.85);
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-bottom: 4px;
+}
+.modis-missed-label {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  color: #fca5a5;
+  background: rgba(239, 68, 68, 0.4);
+  padding: 1px 4px;
+  border-radius: 2px;
+}
+
+/* Watermark Badges */
+.sim-badge {
+  position: absolute;
+  top: 14px;
+  padding: 6px 14px;
+  border-radius: var(--radius-sm);
+  backdrop-filter: blur(8px);
+  display: flex;
+  flex-direction: column;
+  z-index: 8;
+}
+.sim-badge.modis-badge {
+  left: 14px;
+  background: rgba(11, 61, 145, 0.8);
+  border: 1px solid rgba(56, 189, 248, 0.4);
+}
+.sim-badge.viirs-badge {
+  right: 14px;
+  background: rgba(154, 52, 18, 0.8);
+  border: 1px solid rgba(249, 115, 22, 0.4);
+  align-items: flex-end;
+}
+.sim-badge .badge-title {
+  font-family: var(--font-heading);
+  font-size: 13px;
+  font-weight: 800;
+  color: #fff;
+}
+.sim-badge .badge-stat {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+/* Split Divider Line & Handle */
+.split-divider-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #ffffff;
+  box-shadow: 0 0 14px #38bdf8, 0 0 20px #f97316;
+  z-index: 20;
+  pointer-events: none;
+  transform: translateX(-50%);
+}
+.split-divider-handle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #0f172a;
+  border: 2px solid #ffffff;
+  box-shadow: 0 0 16px rgba(0, 0, 0, 0.8), 0 0 12px #38bdf8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  font-size: 10px;
+  color: #fff;
+  cursor: ew-resize;
+  pointer-events: auto;
+}
+.handle-icon {
+  font-size: 14px;
+  color: #38bdf8;
+}
+
+/* Range input overlay for intuitive touch/mouse dragging */
+.split-range-input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: ew-resize;
+  z-index: 25;
+  margin: 0;
+}
+
+/* Simulator Telemetry Strip */
+.sim-telemetry-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-top: 14px;
+}
+.sim-tel-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+}
+.sim-tel-card .tel-label {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-bottom: 2px;
+}
+.sim-tel-card .tel-val {
+  font-size: 14px;
+  font-weight: 700;
+  color: #ffffff;
+  font-family: var(--font-mono);
+}
+.sim-tel-card .tel-sub {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+.modis-color { color: var(--modis-color); }
+.viirs-color { color: var(--viirs-color); }
+.harmonized-color { color: var(--harmonized-color); }
+
+/* --------------------------------------------------------------------------
+   TASK 3: Atmospheric Map Radar Scan Effect & Thermal Pulses
+   -------------------------------------------------------------------------- */
+.map-radar-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 400;
+  overflow: hidden;
+  display: none;
+}
+.map-radar-overlay.active {
+  display: block;
+}
+.radar-scanline-beam {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 150vmax;
+  height: 150vmax;
+  transform-origin: 0% 0%;
+  background: conic-gradient(from 0deg, rgba(56, 189, 248, 0.12) 0deg, rgba(56, 189, 248, 0.02) 25deg, transparent 40deg);
+  animation: map-radar-spin 12s linear infinite;
+}
+@keyframes map-radar-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Leaflet Custom Pulsing Markers */
+.leaflet-pulse-icon {
+  position: relative;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.pulse-center-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  box-shadow: 0 0 8px currentColor;
+}
+.pulse-shockwave {
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  border: 1.5px solid currentColor;
+  animation: marker-shockwave 2s infinite ease-out;
+}
+@keyframes marker-shockwave {
+  0% { transform: scale(0.6); opacity: 0.9; }
+  100% { transform: scale(2.4); opacity: 0; }
+}
+
+/* --------------------------------------------------------------------------
+   TASK 4: 1-Click Judge Guided Mission Briefing Floating HUD
+   -------------------------------------------------------------------------- */
+.judge-briefing-overlay {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(960px, 94vw);
+  z-index: 2500;
+  animation: hud-float-in 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes hud-float-in {
+  from { transform: translate(-50%, 60px); opacity: 0; }
+  to { transform: translate(-50%, 0); opacity: 1; }
+}
+
+.judge-briefing-window {
+  background: rgba(10, 15, 28, 0.96) !important;
+  border: 1.5px solid rgba(56, 189, 248, 0.5) !important;
+  box-shadow: 0 20px 60px -10px rgba(0, 0, 0, 0.8), 0 0 30px rgba(56, 189, 248, 0.25) !important;
+  border-radius: var(--radius-lg);
+  padding: 16px 20px;
+  backdrop-filter: blur(20px);
+}
+
+.hud-window-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.hud-phase-indicator {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.hud-phase-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent-orange);
+  background: rgba(249, 115, 22, 0.12);
+  padding: 2px 8px;
+  border-radius: 4px;
+  border: 1px solid rgba(249, 115, 22, 0.3);
+}
+.hud-phase-name {
+  font-family: var(--font-heading);
+  font-size: 15px;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: -0.01em;
+}
+
+/* Audio Visualizer Equalizer */
+.hud-audio-visualizer {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 16px;
+}
+.audio-bar {
+  width: 3px;
+  background: #38bdf8;
+  border-radius: 1px;
+  animation: eq-bounce 0.8s ease-in-out infinite alternate;
+}
+.audio-bar:nth-child(1) { height: 6px; animation-delay: 0.1s; }
+.audio-bar:nth-child(2) { height: 14px; animation-delay: 0.3s; }
+.audio-bar:nth-child(3) { height: 10px; animation-delay: 0.5s; }
+.audio-bar:nth-child(4) { height: 16px; animation-delay: 0.2s; }
+.audio-bar:nth-child(5) { height: 8px; animation-delay: 0.4s; }
+@keyframes eq-bounce {
+  from { height: 4px; }
+  to { height: 16px; }
+}
+
+.hud-window-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* HUD Body & Typewriter */
+.hud-window-content {
+  padding: 14px 0;
+}
+.hud-narrative-box {
+  background: rgba(0, 0, 0, 0.35);
+  border-left: 3px solid #38bdf8;
+  padding: 10px 16px;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  margin-bottom: 12px;
+  min-height: 58px;
+}
+.hud-typewriter-text {
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: #e2e8f0;
+}
+.hud-typewriter-text strong {
+  color: #ffffff;
+}
+
+.hud-telemetry-strip {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  background: rgba(255, 255, 255, 0.02);
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+.tour-tel-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+}
+.tour-tel-label {
+  color: var(--text-dim);
+}
+.tour-tel-val {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: #ffffff;
+}
+.tour-tel-val.highlight {
+  color: var(--accent-orange);
+}
+.tour-tel-val.harmonized {
+  color: var(--accent-yellow);
+}
+
+/* HUD Progress & Buttons */
+.hud-progress-track {
+  height: 3px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+.hud-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #38bdf8, #f97316);
+  transition: width 0.3s ease;
+}
+
+.hud-controls-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.hud-step-pills {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.tour-step-pill {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-dim);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.tour-step-pill:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-main);
+}
+.tour-step-pill.active {
+  background: rgba(56, 189, 248, 0.15);
+  color: #38bdf8;
+  border-color: rgba(56, 189, 248, 0.4);
+  font-weight: 700;
+}
+.hud-playback-buttons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
