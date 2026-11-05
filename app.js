@@ -216,6 +216,8 @@ function initMissionNavigation() {
   const toggleBtn = document.getElementById('btn-toggle-sidebar');
   const mobileToggleBtn = document.getElementById('btn-mobile-sidebar-toggle');
   const closeBtn = document.getElementById('btn-close-sidebar');
+  const prevBtn = document.getElementById('btn-nav-prev');
+  const nextBtn = document.getElementById('btn-nav-next');
   const navContainer = document.getElementById('nav-container-scroll');
   const mobileSelect = document.getElementById('mobile-nav-select');
 
@@ -254,14 +256,16 @@ function initMissionNavigation() {
     });
   });
 
-  // Smooth mouse-wheel horizontal scrolling for top tabs
-  if (navContainer) {
-    navContainer.addEventListener('wheel', (evt) => {
-      if (evt.deltaY !== 0) {
-        evt.preventDefault();
-        navContainer.scrollLeft += evt.deltaY;
-      }
-    }, { passive: false });
+  // Smooth scroll buttons for top horizontal navbar
+  if (prevBtn && navContainer) {
+    prevBtn.addEventListener('click', () => {
+      navContainer.scrollBy({ left: -260, behavior: 'smooth' });
+    });
+  }
+  if (nextBtn && navContainer) {
+    nextBtn.addEventListener('click', () => {
+      navContainer.scrollBy({ left: 260, behavior: 'smooth' });
+    });
   }
 
   // Mobile & Narrow Viewport Quick-Select Dropdown
