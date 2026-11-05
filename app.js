@@ -226,6 +226,12 @@ function initRouter() {
       if (hash === 'map' && state.map) {
         setTimeout(() => state.map.invalidateSize(), 150);
       }
+      if (hash === 'orbit3d') {
+        setTimeout(() => initOrbit3DVisualizer(), 150);
+      }
+      if (hash === 'climatesim') {
+        setTimeout(() => initClimateSimulator(), 150);
+      }
     }
   }
 
@@ -2019,4 +2025,702 @@ function initJudgeGuidedTour() {
     next: () => renderPhase(currentPhaseIndex + 1),
     prev: () => renderPhase(currentPhaseIndex - 1)
   };
+}
+
+// ==========================================================================
+// FEATURE: 3D ORBITAL SWATH & BOW-TIE VISUALIZER CONTROLLER
+// ==========================================================================
+let orbit3DState = {
+  initialized: false,
+  scene: null,
+  camera: null,
+  renderer: null,
+  globe: null,
+  atmosphere: null,
+  satellites: [],
+  isRotating: true,
+  animId: null
+};
+
+function initOrbit3DVisualizer() {
+  const container = document.getElementById('orbit3d-canvas-container');
+  const canvas = document.getElementById('orbit3d-canvas');
+  if (!container || !canvas) return;
+
+  initBowTieSlider();
+
+  if (orbit3DState.initialized) {
+    if (orbit3DState.renderer && container) {
+      orbit3DState.renderer.setSize(container.clientWidth, container.clientHeight);
+      orbit3DState.camera.aspect = container.clientWidth / container.clientHeight;
+      orbit3DState.camera.updateProjectionMatrix();
+    }
+    return;
+  }
+
+  if (typeof THREE === 'undefined') {
+    console.warn('[!] Three.js not loaded, fallback mode active.');
+    return;
+  }
+
+  const width = container.clientWidth || 800;
+  const height = container.clientHeight || 520;
+
+  // 1. Scene & Camera
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+  camera.position.set(0, 4, 16);
+
+  // 2. WebGL Renderer
+  const renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true });
+  renderer.setSize(width, height);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+  // 3. Lighting
+  const ambientLight = new THREE.AmbientLight(0x223355, 1.2);
+  scene.add(ambientLight);
+  const sunLight = new THREE.DirectionalLight(0xffffff, 2.0);
+  sunLight.position.set(20, 10, 20);
+  scene.add(sunLight);
+
+  // 4. Procedural Textured Earth Globe
+  const globeGeo = new THREE.SphereGeometry(5, 64, 64);
+  
+  const textureCanvas = document.createElement('canvas');
+  textureCanvas.width = 1024;
+  textureCanvas.height = 512;
+  const ctx = textureCanvas.getContext('2d');
+  
+  // Ocean base
+  ctx.fillStyle = '#061325';
+  ctx.fillRect(0, 0, 1024, 512);
+  
+  // Continents simulation
+  ctx.fillStyle = '#1e3a2b';
+  // Americas
+  ctx.beginPath();
+  ctx.ellipse(280, 180, 100, 70, 0.2, 0, Math.PI * 2);
+  ctx.ellipse(320, 320, 60, 110, -0.2, 0, Math.PI * 2);
+  // Eurasia & Africa
+  ctx.ellipse(600, 160, 140, 80, -0.1, 0, Math.PI * 2);
+  ctx.ellipse(580, 280, 70, 90, 0.1, 0, Math.PI * 2);
+  // Australia
+  ctx.ellipse(820, 340, 50, 40, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Coastlines
+  ctx.strokeStyle = '#38bdf8';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // Active fire hotspots on the globe
+  ctx.fillStyle = '#f97316';
+  const fireCoords = [
+    [260, 160], [270, 175], [330, 310], [340, 325],
+    [580, 260], [600, 290], [620, 140], [820, 350]
+  ];
+  fireCoords.forEach(([fx, fy]) => {
+    ctx.beginPath();
+    ctx.arc(fx, fy, 4, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  const earthTex = new THREE.CanvasTexture(textureCanvas);
+  const globeMat = new THREE.MeshPhongMaterial({
+    map: earthTex,
+    specular: new THREE.Color(0x334466),
+    shininess: 15
+  });
+  const globe = new THREE.Mesh(globeGeo, globeMat);
+  scene.add(globe);
+
+  // Atmosphere Glow
+  const atmosGeo = new THREE.SphereGeometry(5.3, 32, 32);
+  const atmosMat = new THREE.MeshBasicMaterial({
+    color: 0x38bdf8,
+    transparent: true,
+    opacity: 0.12,
+    side: THREE.BackSide
+  });
+  const atmosphere = new THREE.Mesh(atmosGeo, atmosMat);
+  scene.add(atmosphere);
+
+  // 5. Orbital Trajectories & Spacecraft
+  // MODIS Orbit (705 km -> radius 6.2)
+  const modisOrbitGeo = new THREE.RingGeometry(6.18, 6.22, 64);
+  const modisOrbitMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8, side: THREE.DoubleSide, transparent: true, opacity: 0.35 });
+  const modisOrbit = new THREE.Mesh(modisOrbitGeo, modisOrbitMat);
+  modisOrbit.rotation.x = Math.PI / 2 + 0.14;
+  scene.add(modisOrbit);
+
+  // VIIRS Orbit (824 km -> radius 6.6)
+  const viirsOrbitGeo = new THREE.RingGeometry(6.58, 6.62, 64);
+  const viirsOrbitMat = new THREE.MeshBasicMaterial({ color: 0xf97316, side: THREE.DoubleSide, transparent: true, opacity: 0.4 });
+  const viirsOrbit = new THREE.Mesh(viirsOrbitGeo, viirsOrbitMat);
+  viirsOrbit.rotation.x = Math.PI / 2 + 0.15;
+  scene.add(viirsOrbit);
+
+  function createSatMesh(color) {
+    const group = new THREE.Group();
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.2, 0.25), new THREE.MeshLambertMaterial({ color: 0xdddddd }));
+    const panelL = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.02, 0.25), new THREE.MeshLambertMaterial({ color: 0x1e3a8a }));
+    panelL.position.x = -0.5;
+    const panelR = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.02, 0.25), new THREE.MeshLambertMaterial({ color: 0x1e3a8a }));
+    panelR.position.x = 0.5;
+    const beacon = new THREE.Mesh(new THREE.SphereGeometry(0.08, 16, 16), new THREE.MeshBasicMaterial({ color: color }));
+    beacon.position.y = 0.12;
+    group.add(body);
+    group.add(panelL);
+    group.add(panelR);
+    group.add(beacon);
+    return group;
+  }
+
+  const satTerra = createSatMesh(0x38bdf8);
+  const satAqua = createSatMesh(0x38bdf8);
+  const satNoaa20 = createSatMesh(0xf97316);
+  scene.add(satTerra);
+  scene.add(satAqua);
+  scene.add(satNoaa20);
+
+  // Conical Swath Lines
+  const swathMat = new THREE.LineBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.35 });
+  const swathGeo = new THREE.BufferGeometry().setFromPoints([
+    new THREE.Vector3(0, 0, 0),
+    new THREE.Vector3(-1.2, -1.8, 0),
+    new THREE.Vector3(1.2, -1.8, 0),
+    new THREE.Vector3(0, 0, 0)
+  ]);
+  const swathCone = new THREE.Line(swathGeo, swathMat);
+  satTerra.add(swathCone);
+
+  orbit3DState = {
+    initialized: true,
+    scene,
+    camera,
+    renderer,
+    globe,
+    atmosphere,
+    satellites: [satTerra, satAqua, satNoaa20],
+    isRotating: true,
+    animId: null
+  };
+
+  // 6. Interactive Drag & Controls
+  let isDragging = false;
+  let prevMousePos = { x: 0, y: 0 };
+
+  canvas.addEventListener('mousedown', (e) => {
+    isDragging = true;
+    prevMousePos = { x: e.clientX, y: e.clientY };
+  });
+
+  window.addEventListener('mouseup', () => { isDragging = false; });
+
+  canvas.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    const deltaX = e.clientX - prevMousePos.x;
+    const deltaY = e.clientY - prevMousePos.y;
+    globe.rotation.y += deltaX * 0.006;
+    globe.rotation.x += deltaY * 0.006;
+    prevMousePos = { x: e.clientX, y: e.clientY };
+  });
+
+  canvas.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    camera.position.z = Math.max(9, Math.min(28, camera.position.z + e.deltaY * 0.015));
+  }, { passive: false });
+
+  // Rotate toggle button
+  const rotateBtn = document.getElementById('btn-orbit3d-toggle-rotate');
+  if (rotateBtn) {
+    rotateBtn.addEventListener('click', () => {
+      audioFX.click();
+      orbit3DState.isRotating = !orbit3DState.isRotating;
+      rotateBtn.textContent = orbit3DState.isRotating ? '⏸ Pause Rotation' : '▶ Resume Rotation';
+    });
+  }
+
+  // Reset Camera button
+  const resetBtn = document.getElementById('btn-orbit3d-reset-cam');
+  if (resetBtn) {
+    resetBtn.addEventListener('click', () => {
+      audioFX.click();
+      camera.position.set(0, 4, 16);
+      globe.rotation.set(0, 0, 0);
+    });
+  }
+
+  // Focus buttons
+  const focusGroup = document.getElementById('orbit3d-satellite-focus');
+  if (focusGroup) {
+    focusGroup.addEventListener('click', (e) => {
+      const btn = e.target.closest('.seg-btn');
+      if (!btn) return;
+      audioFX.click();
+      focusGroup.querySelectorAll('.seg-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const f = btn.dataset.focus;
+      if (f === 'all') camera.position.set(0, 4, 16);
+      else if (f === 'terra') camera.position.set(0, 6.2, 10);
+      else if (f === 'aqua') camera.position.set(0, -6.2, 10);
+      else if (f === 'viirs') camera.position.set(0, 6.6, 9.5);
+    });
+  }
+
+  // 7. Render Loop
+  let orbitTime = 0;
+  function animate() {
+    orbit3DState.animId = requestAnimationFrame(animate);
+    orbitTime += 0.015;
+
+    satTerra.position.x = 6.2 * Math.cos(orbitTime);
+    satTerra.position.y = 6.2 * Math.sin(orbitTime);
+    satTerra.position.z = 0.8 * Math.sin(orbitTime);
+
+    satAqua.position.x = 6.2 * Math.cos(orbitTime + Math.PI);
+    satAqua.position.y = 6.2 * Math.sin(orbitTime + Math.PI);
+    satAqua.position.z = 0.8 * Math.sin(orbitTime + Math.PI);
+
+    satNoaa20.position.x = 6.6 * Math.cos(orbitTime * 0.9 + 1.2);
+    satNoaa20.position.y = 6.6 * Math.sin(orbitTime * 0.9 + 1.2);
+    satNoaa20.position.z = 0.9 * Math.sin(orbitTime * 0.9 + 1.2);
+
+    if (orbit3DState.isRotating && !isDragging) {
+      globe.rotation.y += 0.002;
+    }
+
+    renderer.render(scene, camera);
+  }
+  animate();
+}
+
+// Bow-Tie Distortion Angle Slider
+function initBowTieSlider() {
+  const slider = document.getElementById('bowtie-angle-slider');
+  const valReadout = document.getElementById('bowtie-angle-val');
+  const modisShape = document.getElementById('modis-pixel-shape');
+  const viirsShape = document.getElementById('viirs-pixel-shape');
+  const modisDims = document.getElementById('modis-dims-text');
+  const viirsDims = document.getElementById('viirs-dims-text');
+
+  if (!slider) return;
+
+  slider.addEventListener('input', (e) => {
+    const deg = parseFloat(e.target.value);
+    const rad = deg * (Math.PI / 180);
+    valReadout.textContent = `${deg}° (${deg < 20 ? 'Near Nadir' : deg < 45 ? 'Intermediate Scan' : 'Swath Edge'})`;
+
+    const modisW = 1.0 / Math.cos(rad);
+    const modisH = 1.0 / Math.pow(Math.cos(rad), 2);
+    const modisArea = (modisW * modisH).toFixed(1);
+
+    if (modisShape) {
+      modisShape.style.width = Math.min(140, Math.round(50 * modisW)) + 'px';
+      modisShape.style.height = Math.min(130, Math.round(50 * modisH)) + 'px';
+    }
+    if (modisDims) modisDims.textContent = `${modisW.toFixed(1)} km × ${modisH.toFixed(1)} km (${modisArea} km²)`;
+
+    let viirsAggFactor = deg < 31.7 ? 1.0 : deg < 44.8 ? 1.4 : 2.1;
+    const viirsW = 0.375;
+    const viirsH = 0.375 * viirsAggFactor;
+    const viirsArea = (viirsW * viirsH).toFixed(2);
+
+    if (viirsShape) {
+      viirsShape.style.width = Math.min(90, Math.round(30 * (viirsW / 0.375))) + 'px';
+      viirsShape.style.height = Math.min(90, Math.round(30 * viirsAggFactor)) + 'px';
+    }
+    if (viirsDims) viirsDims.textContent = `375m × ${Math.round(viirsH * 1000)}m (${viirsArea} km²)`;
+  });
+}
+
+// ==========================================================================
+// FEATURE: 2026–2050 WHAT-IF CLIMATE & FIRE SPREAD SIMULATOR CONTROLLER
+// ==========================================================================
+let spreadSimState = {
+  initialized: false,
+  canvas: null,
+  ctx: null,
+  grid: [],
+  cols: 80,
+  rows: 38,
+  cellSize: 10,
+  isRunning: false,
+  timer: null,
+  elapsedHours: 0,
+  drawMode: 'ignite',
+  temp: 2.2,
+  drought: -2.8,
+  moisture: 8.5,
+  wind: 38,
+  chart: null
+};
+
+function initClimateSimulator() {
+  const canvas = document.getElementById('fire-spread-canvas');
+  if (!canvas) return;
+
+  spreadSimState.canvas = canvas;
+  spreadSimState.ctx = canvas.getContext('2d');
+
+  setupClimateSliders();
+  resetSpreadGrid();
+  renderClimateProjectionChart();
+
+  const playBtn = document.getElementById('btn-spread-play');
+  if (playBtn) {
+    playBtn.addEventListener('click', () => {
+      audioFX.click();
+      spreadSimState.isRunning = !spreadSimState.isRunning;
+      playBtn.textContent = spreadSimState.isRunning ? '⏸ Pause Simulation' : '▶ Start Propagation';
+      if (spreadSimState.isRunning) {
+        spreadSimState.timer = setInterval(stepSpreadSimulation, 130);
+      } else {
+        clearInterval(spreadSimState.timer);
+      }
+    });
+  }
+
+  const stepBtn = document.getElementById('btn-spread-step');
+  if (stepBtn) {
+    stepBtn.addEventListener('click', () => {
+      audioFX.step();
+      stepSpreadSimulation();
+    });
+  }
+
+  const resetBtn = document.getElementById('btn-spread-reset');
+  if (resetBtn) {
+    resetBtn.addEventListener('click', () => {
+      audioFX.click();
+      if (spreadSimState.isRunning) {
+        spreadSimState.isRunning = false;
+        clearInterval(spreadSimState.timer);
+        if (playBtn) playBtn.textContent = '▶ Start Propagation';
+      }
+      resetSpreadGrid();
+    });
+  }
+
+  const barrierBtn = document.getElementById('btn-spread-add-barrier');
+  if (barrierBtn) {
+    barrierBtn.addEventListener('click', () => {
+      audioFX.click();
+      spreadSimState.drawMode = spreadSimState.drawMode === 'barrier' ? 'ignite' : 'barrier';
+      barrierBtn.classList.toggle('active', spreadSimState.drawMode === 'barrier');
+      barrierBtn.textContent = spreadSimState.drawMode === 'barrier' ? '🛑 Mode: Drawing Firebreak' : '🛡️ Draw Firebreak Barrier';
+    });
+  }
+
+  canvas.addEventListener('click', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const x = Math.floor((e.clientX - rect.left) / (rect.width / spreadSimState.cols));
+    const y = Math.floor((e.clientY - rect.top) / (rect.height / spreadSimState.rows));
+
+    if (x >= 0 && x < spreadSimState.cols && y >= 0 && y < spreadSimState.rows) {
+      if (spreadSimState.drawMode === 'barrier') {
+        audioFX.step();
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            const nx = x + dx, ny = y + dy;
+            if (nx >= 0 && nx < spreadSimState.cols && ny >= 0 && ny < spreadSimState.rows) {
+              spreadSimState.grid[ny][nx] = 3;
+            }
+          }
+        }
+      } else {
+        audioFX.ping();
+        spreadSimState.grid[y][x] = 1;
+      }
+      renderSpreadCanvas();
+    }
+  });
+}
+
+function resetSpreadGrid() {
+  const { cols, rows } = spreadSimState;
+  spreadSimState.grid = [];
+  spreadSimState.elapsedHours = 0;
+
+  for (let r = 0; r < rows; r++) {
+    const row = [];
+    for (let c = 0; c < cols; c++) {
+      if (c === 55 && r > 5 && r < 32) {
+        row.push(3); // River barrier
+      } else {
+        row.push(0); // Unburned fuel
+      }
+    }
+    spreadSimState.grid.push(row);
+  }
+
+  // Ignition point in center-left
+  spreadSimState.grid[19][18] = 1;
+  spreadSimState.grid[19][19] = 1;
+  spreadSimState.grid[20][18] = 1;
+
+  renderSpreadCanvas();
+  updateSpreadTelemetry(3, 45, 12.4);
+}
+
+function stepSpreadSimulation() {
+  const { cols, rows, grid, temp, moisture, wind } = spreadSimState;
+  const nextGrid = grid.map(r => r.slice());
+
+  const baseProb = Math.max(0.1, Math.min(0.85, 0.28 + (temp - 1.5) * 0.08 - (moisture - 10) * 0.02));
+  const windBoost = 1.0 + (wind / 50.0);
+
+  let activeCount = 0;
+  let burnedCount = 0;
+
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const state = grid[r][c];
+
+      if (state === 1) { // Burning
+        activeCount++;
+        const neighbors = [
+          { dr: -1, dc: 0, w: 0.8 },
+          { dr: 1, dc: 0, w: 0.8 },
+          { dr: 0, dc: -1, w: 0.5 },
+          { dr: 0, dc: 1, w: 2.2 * windBoost },
+          { dr: -1, dc: 1, w: 1.6 * windBoost },
+          { dr: 1, dc: 1, w: 1.6 * windBoost }
+        ];
+
+        neighbors.forEach(n => {
+          const nr = r + n.dr;
+          const nc = c + n.dc;
+          if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
+            if (grid[nr][nc] === 0) {
+              const p = baseProb * n.w;
+              if (Math.random() < p) {
+                nextGrid[nr][nc] = 1;
+              }
+            }
+          }
+        });
+
+        if (Math.random() < 0.65) {
+          nextGrid[r][c] = 2; // Burned
+        }
+      } else if (state === 2) {
+        burnedCount++;
+      }
+    }
+  }
+
+  spreadSimState.grid = nextGrid;
+  spreadSimState.elapsedHours++;
+
+  renderSpreadCanvas();
+
+  const burnedHa = Math.round(burnedCount * 12.5);
+  const spreadMpm = (wind * 0.4 + temp * 2.1).toFixed(1);
+  updateSpreadTelemetry(activeCount, burnedHa, spreadMpm);
+}
+
+function renderSpreadCanvas() {
+  const { ctx, canvas, cols, rows, grid } = spreadSimState;
+  if (!ctx || !canvas) return;
+
+  const w = canvas.width;
+  const h = canvas.height;
+  const cw = w / cols;
+  const ch = h / rows;
+
+  ctx.fillStyle = '#0a0d14';
+  ctx.fillRect(0, 0, w, h);
+
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const state = grid[r][c];
+      const x = c * cw;
+      const y = r * ch;
+
+      if (state === 0) {
+        ctx.fillStyle = (r + c) % 2 === 0 ? '#142918' : '#18311e';
+        ctx.fillRect(x, y, cw - 0.5, ch - 0.5);
+      } else if (state === 1) {
+        const glow = Math.random() > 0.4 ? '#f97316' : '#ef4444';
+        ctx.fillStyle = glow;
+        ctx.shadowColor = '#f97316';
+        ctx.shadowBlur = 6;
+        ctx.fillRect(x, y, cw, ch);
+        ctx.shadowBlur = 0;
+      } else if (state === 2) {
+        ctx.fillStyle = '#1e2430';
+        ctx.fillRect(x, y, cw - 0.5, ch - 0.5);
+      } else if (state === 3) {
+        ctx.fillStyle = '#38bdf8';
+        ctx.fillRect(x, y, cw, ch);
+      }
+    }
+  }
+}
+
+function updateSpreadTelemetry(activeCells, burnedArea, velocity) {
+  const timeEl = document.getElementById('spread-time-elapsed');
+  const cellsEl = document.getElementById('spread-active-cells');
+  const areaEl = document.getElementById('spread-burned-area');
+  const velEl = document.getElementById('spread-velocity');
+
+  if (timeEl) timeEl.textContent = `T + ${String(spreadSimState.elapsedHours).padStart(2, '0')}:00 h`;
+  if (cellsEl) cellsEl.textContent = `${activeCells} cells`;
+  if (areaEl) areaEl.textContent = `${burnedArea.toLocaleString()} ha`;
+  if (velEl) velEl.textContent = `${velocity} m/min`;
+}
+
+function setupClimateSliders() {
+  const tempSlider = document.getElementById('sim-temp-slider');
+  const droughtSlider = document.getElementById('sim-drought-slider');
+  const moistureSlider = document.getElementById('sim-moisture-slider');
+  const windSlider = document.getElementById('sim-wind-slider');
+
+  function recalculateImpact() {
+    const t = parseFloat(tempSlider.value);
+    const d = parseFloat(droughtSlider.value);
+    const m = parseFloat(moistureSlider.value);
+    const w = parseFloat(windSlider.value);
+
+    spreadSimState.temp = t;
+    spreadSimState.drought = d;
+    spreadSimState.moisture = m;
+    spreadSimState.wind = w;
+
+    document.getElementById('sim-temp-val').textContent = `+${t.toFixed(1)} °C`;
+    document.getElementById('sim-drought-val').textContent = `${d.toFixed(1)} (${d < -3 ? 'Extreme Megadrought' : d < -1.5 ? 'Severe Drought' : 'Moderate'})`;
+    document.getElementById('sim-moisture-val').textContent = `${m.toFixed(1)}% (${m < 10 ? 'Critical Explosive' : 'Moderate'})`;
+    document.getElementById('sim-wind-val').textContent = `${w} km/h (SW 225°)`;
+
+    const hotspotGrowthPct = Math.round((t - 1.0) * 28 - (d * 5));
+    const projectedHotspots = Math.round(3450 * (1 + hotspotGrowthPct / 100));
+    const seasonExtDays = Math.round((t - 1.0) * 22 - (d * 4));
+    const fireInterval = Math.max(4, Math.round(28 / (1 + (t - 1.0) * 0.7)));
+    const co2Annual = (27.2 * (1 + hotspotGrowthPct / 100)).toFixed(1);
+
+    animateCounter('impact-hotspots', projectedHotspots, 600, 0, '', ` events (+${hotspotGrowthPct}%)`);
+    document.getElementById('impact-season').textContent = `+${seasonExtDays} Days Longer`;
+    document.getElementById('impact-interval').textContent = `${fireInterval} Years (Down from 28y)`;
+    document.getElementById('impact-co2').textContent = `${co2Annual} Tg / year`;
+  }
+
+  [tempSlider, droughtSlider, moistureSlider, windSlider].forEach(s => {
+    if (s) s.addEventListener('input', recalculateImpact);
+  });
+
+  const presetToggle = document.getElementById('climate-preset-toggle');
+  if (presetToggle) {
+    presetToggle.addEventListener('click', (e) => {
+      const btn = e.target.closest('.seg-btn');
+      if (!btn) return;
+      audioFX.click();
+      presetToggle.querySelectorAll('.seg-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+
+      const p = btn.dataset.preset;
+      if (p === 'ssp1') {
+        tempSlider.value = 1.5;
+        droughtSlider.value = -1.2;
+        moistureSlider.value = 14.0;
+        windSlider.value = 25;
+      } else if (p === 'ssp2') {
+        tempSlider.value = 2.2;
+        droughtSlider.value = -2.8;
+        moistureSlider.value = 8.5;
+        windSlider.value = 38;
+      } else if (p === 'ssp5') {
+        tempSlider.value = 3.8;
+        droughtSlider.value = -4.2;
+        moistureSlider.value = 5.0;
+        windSlider.value = 55;
+      }
+      recalculateImpact();
+    });
+  }
+}
+
+function renderClimateProjectionChart() {
+  const el = document.getElementById('climate-projection-chart');
+  if (!el) return;
+
+  const years = [];
+  for (let y = 2000; y <= 2050; y += 2) years.push(y);
+
+  const histData = years.map(y => {
+    if (y > 2026) return null;
+    return 2400 + Math.sin(y * 0.4) * 600 + (y - 2000) * 45;
+  });
+
+  const ssp1Data = years.map(y => {
+    if (y < 2026) return null;
+    return 3450 + (y - 2026) * 18;
+  });
+
+  const ssp2Data = years.map(y => {
+    if (y < 2026) return null;
+    return 3450 + (y - 2026) * 58;
+  });
+
+  const ssp5Data = years.map(y => {
+    if (y < 2026) return null;
+    return 3450 + (y - 2026) * 125;
+  });
+
+  if (spreadSimState.chart) spreadSimState.chart.destroy();
+  spreadSimState.chart = new Chart(el.getContext('2d'), {
+    type: 'line',
+    data: {
+      labels: years,
+      datasets: [
+        {
+          label: 'Historical Calibrated (2000–2026)',
+          data: histData,
+          borderColor: '#38bdf8',
+          backgroundColor: 'rgba(56, 189, 248, 0.1)',
+          fill: true,
+          tension: 0.3,
+          borderWidth: 2.5
+        },
+        {
+          label: 'SSP1-2.6 Paris Agreement (+1.5°C)',
+          data: ssp1Data,
+          borderColor: '#22c55e',
+          borderDash: [5, 5],
+          borderWidth: 2,
+          tension: 0.3
+        },
+        {
+          label: 'SSP2-4.5 Current Trajectory (+2.2°C)',
+          data: ssp2Data,
+          borderColor: '#f97316',
+          borderWidth: 2.5,
+          tension: 0.3
+        },
+        {
+          label: 'SSP5-8.5 Extreme Escalation (+3.8°C)',
+          data: ssp5Data,
+          borderColor: '#ef4444',
+          borderDash: [3, 3],
+          borderWidth: 2,
+          tension: 0.3
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        x: { ticks: { color: '#64748b' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+        y: {
+          title: { display: true, text: 'Annual Active Hotspots', color: '#94a3b8' },
+          ticks: { color: '#64748b' },
+          grid: { color: 'rgba(255,255,255,0.05)' }
+        }
+      },
+      plugins: {
+        legend: { labels: { color: '#cbd5e1', usePointStyle: true } }
+      }
+    }
+  });
 }

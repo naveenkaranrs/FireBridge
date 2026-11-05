@@ -22,12 +22,13 @@
   <!-- Application Stylesheet -->
   <link rel="stylesheet" href="styles.css">
 
-  <!-- Leaflet JS, MarkerCluster, Heat, Draw & Chart.js -->
+  <!-- Leaflet JS, MarkerCluster, Heat, Draw, Chart.js & Three.js (3D Planetary WebGL) -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
   <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body class="pro-edition">
 
@@ -95,6 +96,8 @@
         <li class="nav-item"><a href="#calendar" class="nav-link" data-view="calendar"><span class="nav-icon">&#9638;</span> Burning Calendar</a></li>
         <li class="nav-item"><a href="#analytics" class="nav-link" data-view="analytics"><span class="nav-icon">&#9881;</span> Fire Analytics</a></li>
         <li class="nav-item"><a href="#comparison" class="nav-link" data-view="comparison"><span class="nav-icon">&#8646;</span> MODIS vs VIIRS</a></li>
+        <li class="nav-item"><a href="#orbit3d" class="nav-link" data-view="orbit3d"><span class="nav-icon">&#127758;</span> 3D Orbital Swath</a></li>
+        <li class="nav-item"><a href="#climatesim" class="nav-link" data-view="climatesim"><span class="nav-icon">&#9889;</span> 2026–2050 What-If Sim</a></li>
         <li class="nav-item"><a href="#anomalies" class="nav-link" data-view="anomalies"><span class="nav-icon">&#9888;</span> Anomaly Detection</a></li>
         <li class="nav-item"><a href="#regional" class="nav-link" data-view="regional"><span class="nav-icon">&#9670;</span> Regional Intelligence</a></li>
         <li class="nav-item"><a href="#sources" class="nav-link" data-view="sources"><span class="nav-icon">&#128451;</span> Data Sources</a></li>
@@ -968,6 +971,135 @@
     </section>
 
     <!-- ==========================================
+         VIEW: 3D ORBITAL SWATH & BOW-TIE VISUALIZER
+         ========================================== -->
+    <section class="app-view" id="view-orbit3d">
+      <div class="orbit3d-view-container">
+        
+        <!-- 3D Globe & Swath Canvas Panel -->
+        <div class="glass-panel orbit3d-main-panel">
+          <div class="panel-header">
+            <div class="orbit-header-title">
+              <span class="panel-icon">🌍</span>
+              <div>
+                <h3 class="panel-title">Interactive 3D Planetary Orbit & Sensor Swath Geometry</h3>
+                <p class="panel-subtitle">Explore real-time 3D satellite trajectories (705 km vs 824 km Sun-synchronous orbits), observation swath widths, and scan geometry.</p>
+              </div>
+            </div>
+            <div class="orbit-header-actions">
+              <div class="segmented-control sm" id="orbit3d-satellite-focus">
+                <button class="seg-btn active" data-focus="all">Constellation (All 5)</button>
+                <button class="seg-btn" data-focus="terra">Terra (705km)</button>
+                <button class="seg-btn" data-focus="aqua">Aqua (705km)</button>
+                <button class="seg-btn" data-focus="viirs">VIIRS (824km)</button>
+              </div>
+              <button class="btn btn-xs btn-secondary" id="btn-orbit3d-reset-cam">Reset View</button>
+              <button class="btn btn-xs btn-primary" id="btn-orbit3d-toggle-rotate">⏸ Pause Rotation</button>
+            </div>
+          </div>
+
+          <!-- 3D Canvas Viewport -->
+          <div class="orbit3d-canvas-wrap" id="orbit3d-canvas-container">
+            <canvas id="orbit3d-canvas"></canvas>
+            
+            <!-- 3D HUD Overlay -->
+            <div class="orbit3d-hud-overlay">
+              <div class="orbit-hud-chip">
+                <span class="dot modis"></span>
+                <span><strong>MODIS Terra & Aqua:</strong> 705 km Alt &bull; 98.2&deg; Inc &bull; 2,330 km Swath</span>
+              </div>
+              <div class="orbit-hud-chip">
+                <span class="dot viirs"></span>
+                <span><strong>VIIRS S-NPP & NOAA-20/21:</strong> 824 km Alt &bull; 98.7&deg; Inc &bull; 3,040 km Swath</span>
+              </div>
+              <div class="orbit-hud-chip live-telemetry">
+                <span>Mean Orbital Period: <strong>~98.8 min</strong></span>
+                <span class="divider">|</span>
+                <span>Ground Velocity: <strong>7.54 km/s</strong></span>
+                <span class="divider">|</span>
+                <span>Day/Night Swath Overlap: <strong>100% Polar Coverage</strong></span>
+              </div>
+            </div>
+
+            <div class="orbit3d-instructions">
+              <span>🖱️ Drag to rotate globe &bull; Scroll to zoom &bull; Real-time 3D WebGL Atmosphere Simulation</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- The "Bow-Tie Effect" Physics Deep-Dive Panel -->
+        <div class="glass-panel bowtie-card">
+          <div class="panel-header">
+            <div class="panel-title-wrap">
+              <span class="panel-icon">📐</span>
+              <div>
+                <h3 class="panel-title">The "Bow-Tie Effect" & Subpixel Distortion Mechanics</h3>
+                <p class="panel-subtitle">Why scan angles stretch MODIS pixels by +480% and how VIIRS 3-Zone Pixel Aggregation solves the geometric distortion.</p>
+              </div>
+            </div>
+            <div class="scan-angle-control">
+              <label class="control-sublabel">Simulate Scan Angle (&theta;):</label>
+              <input type="range" id="bowtie-angle-slider" min="0" max="56" value="35" class="pro-slider-sm">
+              <span class="slider-val" id="bowtie-angle-val">35&deg; (Intermediate Scan)</span>
+            </div>
+          </div>
+
+          <div class="bowtie-comparison-grid">
+            <!-- MODIS Bow-Tie Column -->
+            <div class="bowtie-col modis-col">
+              <div class="col-header">
+                <span class="badge-tag modis">MODIS MCD14ML (Whiskbroom)</span>
+                <h4>Unconstrained Optical Growth</h4>
+              </div>
+              <div class="pixel-distortion-visual" id="modis-distortion-box">
+                <div class="pixel-shape modis-pixel" id="modis-pixel-shape">
+                  <span class="pixel-dims" id="modis-dims-text">1.4 km &times; 2.2 km</span>
+                </div>
+              </div>
+              <ul class="bowtie-specs">
+                <li><span>Nadir Pixel Dimension:</span> <strong>1.0 km &times; 1.0 km (1.0 km&sup2;)</strong></li>
+                <li><span>Scan Edge (55&deg;) Pixel:</span> <strong class="alert">2.0 km &times; 4.8 km (9.6 km&sup2;)</strong></li>
+                <li><span>Pixel Area Growth Factor:</span> <strong class="alert">+960% Area Expansion</strong></li>
+                <li><span>Inter-Scan Overlap:</span> <strong class="alert">Up to 50% Bow-Tie Duplication</strong></li>
+                <li><span>Detection Impact:</span> <em>Edge fires appear distorted, creating artificial duplicate hotspots.</em></li>
+              </ul>
+            </div>
+
+            <!-- VIIRS Aggregation Column -->
+            <div class="bowtie-col viirs-col">
+              <div class="col-header">
+                <span class="badge-tag viirs">VIIRS VNP14IMG (3-Zone Aggregation)</span>
+                <h4>Constrained Constellation Footprint</h4>
+              </div>
+              <div class="pixel-distortion-visual" id="viirs-distortion-box">
+                <div class="pixel-shape viirs-pixel" id="viirs-pixel-shape">
+                  <span class="pixel-dims" id="viirs-dims-text">375 m &times; 520 m</span>
+                </div>
+              </div>
+              <ul class="bowtie-specs">
+                <li><span>Nadir Pixel Dimension:</span> <strong>375 m &times; 375 m (0.14 km&sup2;)</strong></li>
+                <li><span>Scan Edge (56&deg;) Pixel:</span> <strong class="highlight">375 m &times; 800 m (0.30 km&sup2;)</strong></li>
+                <li><span>Pixel Area Growth Factor:</span> <strong class="highlight">Constrained to ~4.2&times; Max</strong></li>
+                <li><span>Inter-Scan Overlap:</span> <strong class="highlight">0% (Hardware Bow-Tie Deletion)</strong></li>
+                <li><span>Detection Impact:</span> <em>Consistent flame perimeter delineation from nadir to edge.</em></li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- Physical Mathematical Formula Callout -->
+          <div class="bowtie-math-callout">
+            <div class="math-title">FireBridge PSF Scan-Angle Correction Operator:</div>
+            <div class="math-eq">
+              A_{\text{pixel}}(\theta) = A_0 \cdot \frac{1}{\cos^2(\theta)} \cdot \frac{R_E + H}{R_E \cos(\eta) - \sqrt{R_E^2 \cos^2(\eta) - (2 R_E H + H^2)}}, \quad \text{PSF}_{\text{norm}}(\theta) = \int K(\theta, x, y)\,dx\,dy
+            </div>
+            <p>FireBridge harmonizes detections by weighting each hotspot's radiant flux against its viewing zenith angle (&theta;), eliminating the scan-edge sensitivity bias before cross-sensor regression.</p>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ==========================================
          VIEW 6: HISTORICAL ANOMALY DETECTION
          ========================================== -->
     <section class="app-view" id="view-anomalies">
@@ -1183,6 +1315,154 @@
             <div class="chart-canvas-wrap sm">
               <canvas id="reg-emissions-chart"></canvas>
             </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ==========================================
+         VIEW: 2026–2050 WHAT-IF CLIMATE & SPREAD SIMULATOR
+         ========================================== -->
+    <section class="app-view" id="view-climatesim">
+      <div class="climatesim-view-container">
+        
+        <!-- Simulator Scenario Controller Card -->
+        <div class="glass-panel scenario-control-card">
+          <div class="panel-header">
+            <div class="panel-title-wrap">
+              <span class="panel-icon">⚡</span>
+              <div>
+                <h3 class="panel-title">2026–2050 Predictive Climate &amp; Wildfire Spread Simulator</h3>
+                <p class="panel-subtitle">IPCC AR6-aligned Earth System predictive modeling evaluating wildfire frequency, burning season shifts, and cellular spread propagation under warming scenarios.</p>
+              </div>
+            </div>
+            <div class="scenario-presets">
+              <span class="control-label-sm">IPCC Scenario Presets:</span>
+              <div class="segmented-control sm" id="climate-preset-toggle">
+                <button class="seg-btn" data-preset="ssp1">SSP1-2.6 (+1.5&deg;C)</button>
+                <button class="seg-btn active" data-preset="ssp2">SSP2-4.5 (+2.2&deg;C)</button>
+                <button class="seg-btn" data-preset="ssp5">SSP5-8.5 (+3.8&deg;C)</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Parameter Sliders Grid -->
+          <div class="climate-sliders-grid">
+            <div class="slider-card">
+              <div class="slider-card-header">
+                <label>Global Warming Anomaly (&Delta;T):</label>
+                <span class="slider-readout highlight" id="sim-temp-val">+2.2 &deg;C</span>
+              </div>
+              <input type="range" id="sim-temp-slider" min="1.0" max="4.5" step="0.1" value="2.2" class="pro-slider">
+              <span class="slider-sub">Baseline vs 1850–1900 Pre-Industrial</span>
+            </div>
+
+            <div class="slider-card">
+              <div class="slider-card-header">
+                <label>Drought Severity (Palmer Z-Index):</label>
+                <span class="slider-readout alert" id="sim-drought-val">-2.8 (Severe Drought)</span>
+              </div>
+              <input type="range" id="sim-drought-slider" min="-5.0" max="2.0" step="0.2" value="-2.8" class="pro-slider">
+              <span class="slider-sub">Soil moisture depletion index</span>
+            </div>
+
+            <div class="slider-card">
+              <div class="slider-card-header">
+                <label>Fine Fuel Moisture Content (%):</label>
+                <span class="slider-readout alert" id="sim-moisture-val">8.5% (Critical)</span>
+              </div>
+              <input type="range" id="sim-moisture-slider" min="4" max="25" step="0.5" value="8.5" class="pro-slider">
+              <span class="slider-sub">&lt;10% indicates explosive fire behavior</span>
+            </div>
+
+            <div class="slider-card">
+              <div class="slider-card-header">
+                <label>Prevailing Wind Speed (km/h):</label>
+                <span class="slider-readout" id="sim-wind-val">38 km/h (SW 225&deg;)</span>
+              </div>
+              <input type="range" id="sim-wind-slider" min="0" max="80" step="5" value="38" class="pro-slider">
+              <span class="slider-sub">Controls elliptical spread front vector</span>
+            </div>
+          </div>
+
+          <!-- Projected Impact Telemetry Bar -->
+          <div class="climate-impact-bar">
+            <div class="impact-item">
+              <span class="impact-label">Projected Annual Hotspots (2040):</span>
+              <span class="impact-val alert" id="impact-hotspots">4,890 events (+41.7%)</span>
+            </div>
+            <div class="impact-divider"></div>
+            <div class="impact-item">
+              <span class="impact-label">Burning Season Extension:</span>
+              <span class="impact-val alert" id="impact-season">+44 Days Longer</span>
+            </div>
+            <div class="impact-divider"></div>
+            <div class="impact-item">
+              <span class="impact-label">Fire Return Interval:</span>
+              <span class="impact-val alert" id="impact-interval">11 Years (Down from 28y)</span>
+            </div>
+            <div class="impact-divider"></div>
+            <div class="impact-item">
+              <span class="impact-label">Atmospheric CO&sub2; Release:</span>
+              <span class="impact-val" id="impact-co2">38.4 Tg / year</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Dynamic Cellular Wildfire Spread Simulator Canvas -->
+        <div class="glass-panel fire-spread-card">
+          <div class="panel-header">
+            <div class="spread-header-titles">
+              <span class="panel-icon">🔥</span>
+              <div>
+                <h3 class="panel-title">Physics-Based Wildfire Spread Propagation Engine</h3>
+                <p class="panel-subtitle">Cellular automata simulation applying Rothermel's surface fire rate-of-spread model and Huygens' elliptical perimeter propagation.</p>
+              </div>
+            </div>
+            <div class="spread-controls">
+              <button class="btn btn-xs btn-primary" id="btn-spread-play">▶ Start Propagation</button>
+              <button class="btn btn-xs btn-secondary" id="btn-spread-step">Step +1h</button>
+              <button class="btn btn-xs btn-ghost" id="btn-spread-reset">↺ Reset Grid</button>
+              <button class="btn btn-xs btn-secondary" id="btn-spread-add-barrier">🛡️ Draw Firebreak Barrier</button>
+            </div>
+          </div>
+
+          <div class="spread-canvas-wrapper">
+            <canvas id="fire-spread-canvas" width="800" height="380"></canvas>
+            
+            <div class="spread-telemetry-hud">
+              <div class="spread-hud-item">
+                <span class="s-label">Simulated Elapsed:</span>
+                <span class="s-val mono" id="spread-time-elapsed">T + 00:00 h</span>
+              </div>
+              <div class="spread-hud-item">
+                <span class="s-label">Active Flaming Cells:</span>
+                <span class="s-val alert mono" id="spread-active-cells">0 cells</span>
+              </div>
+              <div class="spread-hud-item">
+                <span class="s-label">Burned Footprint:</span>
+                <span class="s-val mono" id="spread-burned-area">0 ha</span>
+              </div>
+              <div class="spread-hud-item">
+                <span class="s-label">Spread Velocity:</span>
+                <span class="s-val mono" id="spread-velocity">0.0 m/min</span>
+              </div>
+            </div>
+
+            <div class="spread-instructions">
+              <span>📍 Click anywhere on terrain to ignite fire &bull; Click "Draw Firebreak Barrier" to build suppression line &bull; Adjust wind &amp; moisture above</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Decadal Projection Trajectory Chart (2000–2050) -->
+        <div class="glass-panel projection-chart-card">
+          <div class="panel-header">
+            <h3 class="panel-title">📈 Multi-Decadal Historical (2000–2026) vs Projected (2026–2050) Climatology</h3>
+          </div>
+          <div class="chart-canvas-wrap md">
+            <canvas id="climate-projection-chart"></canvas>
           </div>
         </div>
 
