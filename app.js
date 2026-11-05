@@ -178,6 +178,7 @@ function animateCounter(elOrId, targetVal, duration = 900, decimals = 0, prefix 
 // --- INITIALIZATION ---
 document.addEventListener('DOMContentLoaded', async () => {
   initUtcClock();
+  initMissionNavigation();
   initRouter();
   initMap();
   setupGlobalEvents();
@@ -208,7 +209,74 @@ function initUtcClock() {
   setInterval(update, 1000);
 }
 
-// Hash-based View Routing for the 12 Application Sections
+// Left Mission Subsections Drawer, Scroll Arrows & Mobile Dropdown
+function initMissionNavigation() {
+  const sidebar = document.getElementById('mission-sidebar');
+  const backdrop = document.getElementById('sidebar-backdrop');
+  const toggleBtn = document.getElementById('btn-toggle-sidebar');
+  const mobileToggleBtn = document.getElementById('btn-mobile-sidebar-toggle');
+  const closeBtn = document.getElementById('btn-close-sidebar');
+  const prevBtn = document.getElementById('btn-nav-prev');
+  const nextBtn = document.getElementById('btn-nav-next');
+  const navContainer = document.getElementById('nav-container-scroll');
+  const mobileSelect = document.getElementById('mobile-nav-select');
+
+  function openSidebar() {
+    if (sidebar) sidebar.classList.add('open');
+    if (backdrop) backdrop.classList.add('open');
+  }
+
+  function closeSidebar() {
+    if (sidebar) sidebar.classList.remove('open');
+    if (backdrop) backdrop.classList.remove('open');
+  }
+
+  if (toggleBtn) {
+    toggleBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (sidebar && sidebar.classList.contains('open')) closeSidebar();
+      else openSidebar();
+    });
+  }
+
+  if (mobileToggleBtn) {
+    mobileToggleBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      openSidebar();
+    });
+  }
+
+  if (closeBtn) closeBtn.addEventListener('click', closeSidebar);
+  if (backdrop) backdrop.addEventListener('click', closeSidebar);
+
+  // Close sidebar when clicking any item in the drawer
+  document.querySelectorAll('.drawer-nav-item').forEach(item => {
+    item.addEventListener('click', () => {
+      closeSidebar();
+    });
+  });
+
+  // Smooth scroll buttons for top horizontal navbar
+  if (prevBtn && navContainer) {
+    prevBtn.addEventListener('click', () => {
+      navContainer.scrollBy({ left: -260, behavior: 'smooth' });
+    });
+  }
+  if (nextBtn && navContainer) {
+    nextBtn.addEventListener('click', () => {
+      navContainer.scrollBy({ left: 260, behavior: 'smooth' });
+    });
+  }
+
+  // Mobile & Narrow Viewport Quick-Select Dropdown
+  if (mobileSelect) {
+    mobileSelect.addEventListener('change', (e) => {
+      window.location.hash = '#' + e.target.value;
+    });
+  }
+}
+
+// Hash-based View Routing for all 14 Application Sections
 function initRouter() {
   function handleRoute() {
     const hash = window.location.hash.replace('#', '') || 'overview';
@@ -217,9 +285,25 @@ function initRouter() {
       document.querySelectorAll('.app-view').forEach(v => v.classList.remove('active'));
       targetView.classList.add('active');
 
+      // Sync Main Horizontal Nav Tabs & auto-center active tab
       document.querySelectorAll('#main-nav-tabs .nav-link').forEach(link => {
-        link.classList.toggle('active', link.dataset.view === hash);
+        const isActive = link.dataset.view === hash;
+        link.classList.toggle('active', isActive);
+        if (isActive) {
+          link.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+        }
       });
+
+      // Sync Left Mission Directory Drawer Items
+      document.querySelectorAll('.drawer-nav-item').forEach(item => {
+        item.classList.toggle('active', item.dataset.view === hash);
+      });
+
+      // Sync Mobile Subsection Selector Dropdown
+      const mobileSelect = document.getElementById('mobile-nav-select');
+      if (mobileSelect && mobileSelect.value !== hash) {
+        mobileSelect.value = hash;
+      }
 
       state.currentView = hash;
 

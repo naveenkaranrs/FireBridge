@@ -35,6 +35,10 @@
   <!-- Top Global Header: NASA Mission Command Bar -->
   <header class="app-header">
     <div class="header-brand">
+      <button class="btn btn-sm btn-sidebar-toggle" id="btn-toggle-sidebar" title="Toggle Mission Subsections Menu (All 14 Sections)">
+        <span class="menu-icon">☰</span>
+        <span class="sidebar-btn-label">Menu</span>
+      </button>
       <div class="nasa-insignia">
         <span class="meatball-dot"></span>
         <span class="agency-title">NASA</span>
@@ -87,16 +91,93 @@
     </div>
   </header>
 
-  <!-- Global Navigation Bar (All 12 Required Project Sections) -->
+  <!-- Left Mission Subsections Drawer (Accessible via Menu button or on compact screens) -->
+  <aside class="mission-sidebar-drawer" id="mission-sidebar">
+    <div class="sidebar-drawer-header">
+      <div class="drawer-title-group">
+        <span class="meatball-dot"></span>
+        <span class="drawer-title">MISSION DIRECTORY</span>
+        <span class="drawer-badge">14 SECTIONS</span>
+      </div>
+      <button class="btn-close-drawer" id="btn-close-sidebar" title="Close Sidebar">&times;</button>
+    </div>
+    <div class="sidebar-drawer-body">
+      <div class="sidebar-category-label">OBSERVATION &amp; INTELLIGENCE</div>
+      <a href="#overview" class="drawer-nav-item active" data-view="overview">
+        <span class="d-icon">&#9776;</span>
+        <div class="d-text"><div class="d-name">Overview</div><div class="d-desc">Mission control &amp; hazard status</div></div>
+      </a>
+      <a href="#map" class="drawer-nav-item" data-view="map">
+        <span class="d-icon">&#9678;</span>
+        <div class="d-text"><div class="d-name">Geospatial Map</div><div class="d-desc">Live vector hotspots &amp; GIBS imagery</div></div>
+      </a>
+      <a href="#orbit3d" class="drawer-nav-item" data-view="orbit3d">
+        <span class="d-icon">&#127758;</span>
+        <div class="d-text"><div class="d-name">3D Orbital Swath</div><div class="d-desc">WebGL globe &amp; bow-tie distortion</div></div>
+      </a>
+      
+      <div class="sidebar-category-label">CLIMATOLOGY &amp; SENSORS</div>
+      <a href="#calendar" class="drawer-nav-item" data-view="calendar">
+        <span class="d-icon">&#9638;</span>
+        <div class="d-text"><div class="d-name">Burning Calendar</div><div class="d-desc">2000–2026 multi-decadal matrix</div></div>
+      </a>
+      <a href="#analytics" class="drawer-nav-item" data-view="analytics">
+        <span class="d-icon">&#9881;</span>
+        <div class="d-text"><div class="d-name">Fire Analytics</div><div class="d-desc">Phenology shift &amp; diurnal curves</div></div>
+      </a>
+      <a href="#comparison" class="drawer-nav-item" data-view="comparison">
+        <span class="d-icon">&#8646;</span>
+        <div class="d-text"><div class="d-name">MODIS vs VIIRS</div><div class="d-desc">Subpixel optical split simulator</div></div>
+      </a>
+      <a href="#anomalies" class="drawer-nav-item" data-view="anomalies">
+        <span class="d-icon">&#9888;</span>
+        <div class="d-text"><div class="d-name">Anomaly Detection</div><div class="d-desc">Copernicus GWIS hazard tiers</div></div>
+      </a>
+      <a href="#regional" class="drawer-nav-item" data-view="regional">
+        <span class="d-icon">&#9670;</span>
+        <div class="d-text"><div class="d-name">Regional Intelligence</div><div class="d-desc">6 biomes comparative analysis</div></div>
+      </a>
+
+      <div class="sidebar-category-label">PREDICTION &amp; VALIDATION</div>
+      <a href="#climatesim" class="drawer-nav-item" data-view="climatesim">
+        <span class="d-icon">&#9889;</span>
+        <div class="d-text"><div class="d-name">2026–2050 What-If Sim</div><div class="d-desc">IPCC climate &amp; fire spread engine</div></div>
+      </a>
+      <a href="#sources" class="drawer-nav-item" data-view="sources">
+        <span class="d-icon">&#128451;</span>
+        <div class="d-text"><div class="d-name">Data Sources</div><div class="d-desc">NASA FIRMS API &amp; product catalog</div></div>
+      </a>
+      <a href="#methodology" class="drawer-nav-item" data-view="methodology">
+        <span class="d-icon">&#128218;</span>
+        <div class="d-text"><div class="d-name">Methodology</div><div class="d-desc">12-stage pipeline &amp; formulas</div></div>
+      </a>
+      <a href="#validation" class="drawer-nav-item" data-view="validation">
+        <span class="d-icon">&#10004;</span>
+        <div class="d-text"><div class="d-name">Quality &amp; Validation</div><div class="d-desc">Audit checks &amp; significance tests</div></div>
+      </a>
+      <a href="#export" class="drawer-nav-item" data-view="export">
+        <span class="d-icon">&#128190;</span>
+        <div class="d-text"><div class="d-name">Export &amp; Reports</div><div class="d-desc">FIRMS CSV, GeoJSON &amp; PDF report</div></div>
+      </a>
+      <a href="#about" class="drawer-nav-item" data-view="about">
+        <span class="d-icon">&#9432;</span>
+        <div class="d-text"><div class="d-name">About FireBridge</div><div class="d-desc">Space Apps 2026 team &amp; open science</div></div>
+      </a>
+    </div>
+  </aside>
+  <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+
+  <!-- Global Navigation Bar (All 14 Required Project Sections with Smooth Scroll Arrows) -->
   <nav class="app-navbar">
-    <div class="nav-container">
+    <button class="nav-arrow-btn left" id="btn-nav-prev" title="Scroll Tabs Left">&#8249;</button>
+    <div class="nav-container" id="nav-container-scroll">
       <ul class="nav-tabs" id="main-nav-tabs">
         <li class="nav-item"><a href="#overview" class="nav-link active" data-view="overview"><span class="nav-icon">&#9776;</span> Overview</a></li>
         <li class="nav-item"><a href="#map" class="nav-link" data-view="map"><span class="nav-icon">&#9678;</span> Geospatial Map</a></li>
+        <li class="nav-item"><a href="#orbit3d" class="nav-link" data-view="orbit3d"><span class="nav-icon">&#127758;</span> 3D Orbital Swath</a></li>
         <li class="nav-item"><a href="#calendar" class="nav-link" data-view="calendar"><span class="nav-icon">&#9638;</span> Burning Calendar</a></li>
         <li class="nav-item"><a href="#analytics" class="nav-link" data-view="analytics"><span class="nav-icon">&#9881;</span> Fire Analytics</a></li>
         <li class="nav-item"><a href="#comparison" class="nav-link" data-view="comparison"><span class="nav-icon">&#8646;</span> MODIS vs VIIRS</a></li>
-        <li class="nav-item"><a href="#orbit3d" class="nav-link" data-view="orbit3d"><span class="nav-icon">&#127758;</span> 3D Orbital Swath</a></li>
         <li class="nav-item"><a href="#climatesim" class="nav-link" data-view="climatesim"><span class="nav-icon">&#9889;</span> 2026–2050 What-If Sim</a></li>
         <li class="nav-item"><a href="#anomalies" class="nav-link" data-view="anomalies"><span class="nav-icon">&#9888;</span> Anomaly Detection</a></li>
         <li class="nav-item"><a href="#regional" class="nav-link" data-view="regional"><span class="nav-icon">&#9670;</span> Regional Intelligence</a></li>
@@ -107,7 +188,35 @@
         <li class="nav-item"><a href="#about" class="nav-link" data-view="about"><span class="nav-icon">&#9432;</span> About FireBridge</a></li>
       </ul>
     </div>
+    <button class="nav-arrow-btn right" id="btn-nav-next" title="Scroll Tabs Right">&#8250;</button>
   </nav>
+
+  <!-- Mobile & Narrow Screen Mission Subsections Directory Bar -->
+  <div class="mobile-subsections-strip" id="mobile-subsections-bar">
+    <button class="mobile-drawer-btn" id="btn-mobile-sidebar-toggle" title="Open Complete 14-Section Mission Directory">
+      <span class="m-icon">☰</span>
+      <span class="m-title">14 SECTIONS</span>
+    </button>
+    <div class="mobile-select-container">
+      <span class="mobile-select-label">GO TO:</span>
+      <select class="mobile-nav-select" id="mobile-nav-select" aria-label="Select Mission Subsection">
+        <option value="overview">01. ☰ Overview (Mission Control)</option>
+        <option value="map">02. ◎ Geospatial Map (FIRMS + GIBS)</option>
+        <option value="orbit3d">03. 🌍 3D Orbital Swath (WebGL Globe)</option>
+        <option value="calendar">04. ▤ Burning Calendar (2000–2026)</option>
+        <option value="analytics">05. ⚙ Fire Analytics (Phenology Shift)</option>
+        <option value="comparison">06. ⇆ MODIS vs VIIRS (1km vs 375m)</option>
+        <option value="climatesim">07. ⚡ 2026–2050 What-If Sim (IPCC AR6)</option>
+        <option value="anomalies">08. ⚠ Anomaly Detection (GWIS Tiers)</option>
+        <option value="regional">09. ◆ Regional Intelligence (6 Biomes)</option>
+        <option value="sources">10. 🗃 Data Sources (NASA FIRMS API)</option>
+        <option value="methodology">11. 📖 Methodology (12-Stage Pipeline)</option>
+        <option value="validation">12. ✔ Quality &amp; Validation (Audits)</option>
+        <option value="export">13. 💾 Export &amp; Reports (GeoJSON / CSV)</option>
+        <option value="about">14. ℹ About FireBridge (Space Apps 2026)</option>
+      </select>
+    </div>
+  </div>
 
   <!-- High-Tech Satellite Constellation Orbit Radar & Overpass HUD -->
   <section class="constellation-tracker-hud glass-panel" id="orbit-tracker-bar">
