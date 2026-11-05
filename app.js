@@ -256,16 +256,14 @@ function initMissionNavigation() {
     });
   });
 
-  // Smooth scroll buttons for top horizontal navbar
-  if (prevBtn && navContainer) {
-    prevBtn.addEventListener('click', () => {
-      navContainer.scrollBy({ left: -260, behavior: 'smooth' });
-    });
-  }
-  if (nextBtn && navContainer) {
-    nextBtn.addEventListener('click', () => {
-      navContainer.scrollBy({ left: 260, behavior: 'smooth' });
-    });
+  // Natural horizontal mousewheel scroll on navbar container
+  if (navContainer) {
+    navContainer.addEventListener('wheel', (e) => {
+      if (e.deltaY !== 0) {
+        e.preventDefault();
+        navContainer.scrollLeft += e.deltaY;
+      }
+    }, { passive: false });
   }
 
   // Mobile & Narrow Viewport Quick-Select Dropdown
