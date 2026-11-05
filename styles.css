@@ -441,104 +441,6 @@ body {
 }
 
 /* ==========================================================================
-   Mobile & Narrow Viewport Subsections Directory Strip
-   ========================================================================== */
-.mobile-subsections-strip {
-  display: flex;
-  background: #0d1527;
-  border-bottom: 1.5px solid rgba(56, 189, 248, 0.3);
-  padding: 8px 12px;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  position: sticky;
-  top: 108px;
-  z-index: 998;
-  backdrop-filter: blur(10px);
-}
-
-.mobile-drawer-btn {
-  background: rgba(56, 189, 248, 0.15);
-  border: 1px solid rgba(56, 189, 248, 0.4);
-  color: #38bdf8;
-  padding: 6px 12px;
-  border-radius: var(--radius-sm);
-  font-family: var(--font-heading);
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.05em;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  flex-shrink: 0;
-}
-
-.mobile-drawer-btn:hover {
-  background: rgba(56, 189, 248, 0.3);
-  border-color: #38bdf8;
-  color: #fff;
-  transform: translateY(-1px);
-}
-
-.mobile-drawer-btn .m-icon {
-  font-size: 14px;
-}
-
-.mobile-select-container {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex: 1;
-  max-width: 480px;
-  justify-content: flex-end;
-}
-
-.mobile-select-label {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 700;
-  color: var(--text-dim);
-  letter-spacing: 0.05em;
-  white-space: nowrap;
-}
-
-.mobile-nav-select {
-  background: #111a2e;
-  color: #f1f5f9;
-  border: 1px solid rgba(56, 189, 248, 0.35);
-  border-radius: var(--radius-sm);
-  padding: 6px 10px;
-  font-family: var(--font-sans);
-  font-size: 12px;
-  font-weight: 600;
-  width: 100%;
-  max-width: 320px;
-  outline: none;
-  cursor: pointer;
-  transition: border-color 0.2s ease;
-}
-
-.mobile-nav-select:focus {
-  border-color: var(--accent-cyan);
-  box-shadow: 0 0 8px rgba(56, 189, 248, 0.4);
-}
-
-.mobile-nav-select option {
-  background: #0b101d;
-  color: #f1f5f9;
-  padding: 8px;
-}
-
-@media (min-width: 1300px) {
-  /* On large monitors, top tab strip is wide enough; drawer is accessible via header menu */
-  .mobile-subsections-strip {
-    display: none;
-  }
-}
-
-/* ==========================================================================
    Global Control Bar (Biomes & Operator)
    ========================================================================== */
 .global-control-bar {
@@ -2233,9 +2135,6 @@ body {
   .sat-pill {
     padding: 6px 8px;
   }
-  .mobile-subsections-strip {
-    top: 56px;
-  }
   .app-navbar {
     top: 56px;
   }
@@ -2259,16 +2158,6 @@ body {
   }
   .project-title {
     font-size: 16px;
-  }
-  .mobile-drawer-btn .m-title {
-    font-size: 10px;
-  }
-  .mobile-select-label {
-    display: none;
-  }
-  .mobile-nav-select {
-    font-size: 11px;
-    padding: 5px 8px;
   }
   .hud-orbit-satellites {
     grid-template-columns: 1fr;

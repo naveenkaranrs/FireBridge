@@ -209,17 +209,13 @@ function initUtcClock() {
   setInterval(update, 1000);
 }
 
-// Left Mission Subsections Drawer, Scroll Arrows & Mobile Dropdown
+// Left Mission Subsections Drawer & Navbar Horizontal Scrolling
 function initMissionNavigation() {
   const sidebar = document.getElementById('mission-sidebar');
   const backdrop = document.getElementById('sidebar-backdrop');
   const toggleBtn = document.getElementById('btn-toggle-sidebar');
-  const mobileToggleBtn = document.getElementById('btn-mobile-sidebar-toggle');
   const closeBtn = document.getElementById('btn-close-sidebar');
-  const prevBtn = document.getElementById('btn-nav-prev');
-  const nextBtn = document.getElementById('btn-nav-next');
   const navContainer = document.getElementById('nav-container-scroll');
-  const mobileSelect = document.getElementById('mobile-nav-select');
 
   function openSidebar() {
     if (sidebar) sidebar.classList.add('open');
@@ -236,13 +232,6 @@ function initMissionNavigation() {
       e.preventDefault();
       if (sidebar && sidebar.classList.contains('open')) closeSidebar();
       else openSidebar();
-    });
-  }
-
-  if (mobileToggleBtn) {
-    mobileToggleBtn.addEventListener('click', (e) => {
-      e.preventDefault();
-      openSidebar();
     });
   }
 
@@ -264,13 +253,6 @@ function initMissionNavigation() {
         navContainer.scrollLeft += e.deltaY;
       }
     }, { passive: false });
-  }
-
-  // Mobile & Narrow Viewport Quick-Select Dropdown
-  if (mobileSelect) {
-    mobileSelect.addEventListener('change', (e) => {
-      window.location.hash = '#' + e.target.value;
-    });
   }
 }
 
@@ -296,12 +278,6 @@ function initRouter() {
       document.querySelectorAll('.drawer-nav-item').forEach(item => {
         item.classList.toggle('active', item.dataset.view === hash);
       });
-
-      // Sync Mobile Subsection Selector Dropdown
-      const mobileSelect = document.getElementById('mobile-nav-select');
-      if (mobileSelect && mobileSelect.value !== hash) {
-        mobileSelect.value = hash;
-      }
 
       state.currentView = hash;
 
