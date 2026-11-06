@@ -968,12 +968,13 @@
     <section class="app-view" id="view-orbit3d">
       <div class="orbit3d-view-container glass-panel">
         
+        <!-- Top Unified Mission Header -->
         <div class="orbit3d-header">
           <div class="orbit3d-titles">
             <span class="panel-icon">&#127758;</span>
             <div>
-              <h2 class="view-title">3D Planetary Orbital Swath &amp; Constellation Mission Environment</h2>
-              <p class="view-subtitle">Interactive WebGL Earth visualizer comparing 705 km (MODIS) vs 824 km (VIIRS) scan swaths, real-world orbital mechanics, and scan edge bow-tie pixel growth.</p>
+              <h2 class="view-title">3D Planetary Orbital Swath &amp; Geometric Distortion Mission Workbench</h2>
+              <p class="view-subtitle">Interactive WebGL Earth comparing 705 km (MODIS) vs 824 km (VIIRS) scan swaths side-by-side with scan edge bow-tie pixel growth simulator.</p>
             </div>
           </div>
 
@@ -992,101 +993,128 @@
           </div>
         </div>
 
-        <div class="orbit3d-canvas-wrap" id="orbit3d-container">
-          <canvas id="orbit3d-canvas"></canvas>
+        <!-- 2-COLUMN SPLIT BENCH: LEFT = 3D WORLD | RIGHT = BOW-TIE DISTORTION SIMULATOR -->
+        <div class="orbit3d-split-grid">
 
-          <!-- Top-Left Holographic Spacecraft Telemetry HUD Overlay (ASTRA-GDS style) -->
-          <div class="orbit3d-hud-overlay">
-            <div class="orbit-hud-chip" id="orbit-hud-terra">
-              <span class="hud-chip-dot modis"></span>
-              <div class="hud-chip-info">
-                <strong>Terra (MODIS 1km)</strong>
-                <span>705 km Alt • 98.2° Incl • 2,330 km Swath • 7.54 km/s</span>
+          <!-- LEFT COLUMN: OUR 3D WORLD -->
+          <div class="orbit3d-world-col">
+            <div class="orbit3d-canvas-wrap" id="orbit3d-container">
+              <canvas id="orbit3d-canvas"></canvas>
+
+              <!-- Top-Left Holographic Spacecraft Telemetry HUD Overlay (ASTRA-GDS style) -->
+              <div class="orbit3d-hud-overlay">
+                <div class="orbit-hud-chip" id="orbit-hud-terra">
+                  <span class="hud-chip-dot modis"></span>
+                  <div class="hud-chip-info">
+                    <strong>Terra (MODIS 1km)</strong>
+                    <span>705 km Alt &bull; 98.2° Incl &bull; 2,330 km Swath &bull; 7.54 km/s</span>
+                  </div>
+                </div>
+                <div class="orbit-hud-chip" id="orbit-hud-viirs">
+                  <span class="hud-chip-dot viirs"></span>
+                  <div class="hud-chip-info">
+                    <strong>Suomi-NPP / NOAA-20 (VIIRS 375m)</strong>
+                    <span>824 km Alt &bull; 98.7° Incl &bull; 3,060 km Swath &bull; 7.48 km/s</span>
+                  </div>
+                </div>
               </div>
-            </div>
-            <div class="orbit-hud-chip" id="orbit-hud-viirs">
-              <span class="hud-chip-dot viirs"></span>
-              <div class="hud-chip-info">
-                <strong>Suomi-NPP / NOAA-20 (VIIRS 375m)</strong>
-                <span>824 km Alt • 98.7° Incl • 3,060 km Swath • 7.48 km/s</span>
+
+              <!-- Bottom Telemetry Metric Ticker -->
+              <div class="orbit3d-bottom-ticker">
+                <div class="ticker-item"><span class="t-lbl">Spacecraft:</span> <span class="t-val mono text-cyan">Terra, Aqua, S-NPP, NOAA-20/21</span></div>
+                <div class="ticker-item"><span class="t-lbl">Network:</span> <span class="t-val mono text-green">White Sands &bull; McMurdo &bull; Svalbard</span></div>
+                <div class="ticker-item"><span class="t-lbl">MODIS Swath:</span> <span class="t-val mono text-cyan">2,330 km (1km Nadir)</span></div>
+                <div class="ticker-item"><span class="t-lbl">VIIRS Swath:</span> <span class="t-val mono text-orange">3,060 km (375m I-Band)</span></div>
               </div>
             </div>
           </div>
 
-          <!-- Bottom Telemetry Metric Ticker -->
-          <div class="orbit3d-bottom-ticker">
-            <div class="ticker-item"><span class="t-lbl">Active Spacecraft:</span> <span class="t-val mono text-cyan">Terra (AM), Aqua (PM), S-NPP, NOAA-20/21</span></div>
-            <div class="ticker-item"><span class="t-lbl">Ground Network:</span> <span class="t-val mono text-green">White Sands • McMurdo • Svalbard • ISTRAC</span></div>
-            <div class="ticker-item"><span class="t-lbl">MODIS Swath:</span> <span class="t-val mono text-cyan">2,330 km (1km Nadir)</span></div>
-            <div class="ticker-item"><span class="t-lbl">VIIRS Swath:</span> <span class="t-val mono text-orange">3,060 km (375m I-Band)</span></div>
-          </div>
-        </div>
+          <!-- RIGHT COLUMN: 📐 VIEWING ZENITH ANGLE (VZA) & BOW-TIE EFFECT SIMULATOR -->
+          <div class="orbit3d-bowtie-col">
+            <div class="bowtie-distortion-panel-v2">
+              <div class="bowtie-header">
+                <div>
+                  <h4 class="bowtie-title">&#128298; Viewing Zenith Angle (VZA) &amp; Bow-Tie Effect Distortion Simulator</h4>
+                  <p class="bowtie-desc">At scan edges (55°+), MODIS pixel footprint expands by ~4.8× along-scan and 2.4× along-track (~11.5 km²), whereas VIIRS onboard 3-to-1 aggregation constrains growth to ≤ 0.8 km (~0.29 km² area).</p>
+                </div>
+                <div class="angle-slider-wrap">
+                  <span class="slider-lbl">Off-Nadir Scan Angle:</span>
+                  <input type="range" id="slider-bowtie-angle" min="0" max="56" value="45" class="pro-slider-sm">
+                  <span id="bowtie-angle-val" class="angle-badge mono">45° VZA</span>
+                </div>
+              </div>
 
-        <!-- Scan Angle Pixel Growth Diagram (Bow-Tie Distortion) -->
-        <div class="bowtie-distortion-panel">
-          <div class="bowtie-header">
-            <div>
-              <h4 class="bowtie-title">📐 Viewing Zenith Angle (VZA) &amp; Bow-Tie Effect Distortion Simulator</h4>
-              <p class="bowtie-desc">Observe geometric distortion across the scan swath: At swath edges (53°+), MODIS pixel footprint expands by ~4.8× along-scan and 2.4× along-track (~11.5 km² area), whereas VIIRS onboard 3-to-1 aggregation constrains growth to ≤ 0.8 km (~0.29 km² area).</p>
-            </div>
-            <div class="angle-slider-wrap">
-              <span class="slider-lbl">Off-Nadir Scan Angle:</span>
-              <input type="range" id="slider-bowtie-angle" min="0" max="56" value="45" class="pro-slider-sm">
-              <span id="bowtie-angle-val" class="angle-badge mono">45° VZA</span>
+              <div class="bowtie-comparison-grid-v2">
+                <!-- MODIS Distortion Card -->
+                <div class="bowtie-card modis-card">
+                  <div class="bowtie-card-header">
+                    <span class="sat-dot modis"></span>
+                    <strong>MODIS 1km Footprint</strong>
+                  </div>
+                  <div class="pixel-box-stage">
+                    <div class="pixel-box modis-box" id="box-modis-pixel"></div>
+                  </div>
+                  <div class="pixel-stats-card">
+                    <div class="stat-line">
+                      <span class="stat-lbl">Dimensions at <span class="vza-cur-angle">45°</span>:</span>
+                      <span class="stat-val mono text-red" id="metric-modis-pixel">1.4 km × 1.6 km</span>
+                    </div>
+                    <div class="stat-line">
+                      <span class="stat-lbl">Ground Area:</span>
+                      <span class="stat-val mono text-red" id="metric-modis-area">~2.3 km² footprint</span>
+                    </div>
+                    <div class="stat-line">
+                      <span class="stat-lbl">Artifact:</span>
+                      <span class="stat-val text-red">High adjacent scan overlap</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- VIIRS Distortion Card -->
+                <div class="bowtie-card viirs-card">
+                  <div class="bowtie-card-header">
+                    <span class="sat-dot viirs"></span>
+                    <strong>VIIRS 375m Footprint</strong>
+                  </div>
+                  <div class="pixel-box-stage">
+                    <div class="pixel-box viirs-box" id="box-viirs-pixel"></div>
+                  </div>
+                  <div class="pixel-stats-card">
+                    <div class="stat-line">
+                      <span class="stat-lbl">Dimensions at <span class="vza-cur-angle">45°</span>:</span>
+                      <span class="stat-val mono text-cyan" id="metric-viirs-pixel">0.54 km × 0.51 km</span>
+                    </div>
+                    <div class="stat-line">
+                      <span class="stat-lbl">Ground Area:</span>
+                      <span class="stat-val mono text-cyan" id="metric-viirs-area">~0.28 km² (3-to-1 aggregation)</span>
+                    </div>
+                    <div class="stat-line">
+                      <span class="stat-lbl">Deletion:</span>
+                      <span class="stat-val text-cyan">Onboard duplicate pixel deletion active</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Operational Bow-Tie Benchmark Strip -->
+              <div class="bowtie-benchmark-strip">
+                <div class="bb-item">
+                  <span class="bb-k">Swath Edge Area Growth:</span>
+                  <span class="bb-v text-red">MODIS: 1.0 km² ➔ 11.5 km² (+1,050%)</span>
+                </div>
+                <div class="bb-item">
+                  <span class="bb-k">VIIRS Constrained Growth:</span>
+                  <span class="bb-v text-cyan">VIIRS: 0.14 km² ➔ 0.29 km² (+107%)</span>
+                </div>
+                <div class="bb-item">
+                  <span class="bb-k">Optical Advantage:</span>
+                  <span class="bb-v text-green">39.6× Smaller Pixel Area at Swath Edge</span>
+                </div>
+              </div>
+
             </div>
           </div>
 
-          <div class="bowtie-comparison-grid">
-            <!-- MODIS Distortion Card -->
-            <div class="bowtie-card modis-card">
-              <div class="bowtie-card-header">
-                <span class="sat-dot modis"></span>
-                <strong>MODIS 1km Footprint (Nadir: 1.0 km × 1.0 km)</strong>
-              </div>
-              <div class="pixel-box-stage">
-                <div class="pixel-box modis-box" id="box-modis-pixel"></div>
-              </div>
-              <div class="pixel-stats-card">
-                <div class="stat-line">
-                  <span class="stat-lbl">Dimensions at <span class="vza-cur-angle">45°</span>:</span>
-                  <span class="stat-val mono text-red" id="metric-modis-pixel">2.4 km (scan) × 4.8 km (track)</span>
-                </div>
-                <div class="stat-line">
-                  <span class="stat-lbl">Ground Pixel Area:</span>
-                  <span class="stat-val mono text-red" id="metric-modis-area">~11.5 km² footprint</span>
-                </div>
-                <div class="stat-line">
-                  <span class="stat-lbl">Bow-Tie Artifact:</span>
-                  <span class="stat-val text-red">High adjacent scan overlap &amp; distortion</span>
-                </div>
-              </div>
-            </div>
-
-            <!-- VIIRS Distortion Card -->
-            <div class="bowtie-card viirs-card">
-              <div class="bowtie-card-header">
-                <span class="sat-dot viirs"></span>
-                <strong>VIIRS 375m Footprint (Nadir: 0.375 km × 0.375 km)</strong>
-              </div>
-              <div class="pixel-box-stage">
-                <div class="pixel-box viirs-box" id="box-viirs-pixel"></div>
-              </div>
-              <div class="pixel-stats-card">
-                <div class="stat-line">
-                  <span class="stat-lbl">Dimensions at <span class="vza-cur-angle">45°</span>:</span>
-                  <span class="stat-val mono text-cyan" id="metric-viirs-pixel">0.54 km (scan) × 0.54 km (track)</span>
-                </div>
-                <div class="stat-line">
-                  <span class="stat-lbl">Ground Pixel Area:</span>
-                  <span class="stat-val mono text-cyan" id="metric-viirs-area">~0.29 km² (3-to-1 aggregation)</span>
-                </div>
-                <div class="stat-line">
-                  <span class="stat-lbl">Bow-Tie Deletion:</span>
-                  <span class="stat-val text-cyan">Onboard duplicate pixel deletion active</span>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
 
       </div>
