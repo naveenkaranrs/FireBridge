@@ -387,6 +387,14 @@ function updateActiveRegion(regionKey) {
   const regionData = state.database[regionKey];
   if (!regionData) return;
 
+  const globalSelect = document.getElementById('global-biome-select');
+  if (globalSelect && globalSelect.value !== regionKey) {
+    globalSelect.value = regionKey;
+  }
+  document.querySelectorAll('.biome-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.region === regionKey);
+  });
+
   state.activeHotspots = regionData.sample_hotspots || [];
   state.mapFilters.customBounds = null;
 
@@ -401,6 +409,9 @@ function updateActiveRegion(regionKey) {
   renderCalendar();
   applyMapFilters();
   fitMapToBounds(regionData.metadata.bounds);
+  if (state.map) {
+    setTimeout(() => state.map.invalidateSize(true), 50);
+  }
   renderAnalyticsChart();
   renderComparisonCharts();
   renderAnomalyCharts();
@@ -417,6 +428,12 @@ function initMap() {
     attributionControl: false,
     maxZoom: 18
   }).setView([39.2, -121.7], 6);
+
+  // Invalidate size on load to guarantee immediate tile loading
+  setTimeout(() => { if (state.map) state.map.invalidateSize(true); }, 100);
+  setTimeout(() => { if (state.map) state.map.invalidateSize(true); }, 300);
+  setTimeout(() => { if (state.map) state.map.invalidateSize(true); }, 800);
+  window.addEventListener('resize', () => { if (state.map) state.map.invalidateSize(); });
 
   // Basemap Tile Layers: Free CartoDB Dark Matter without API key & NASA GIBS WMTS
   const darkTiles = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
@@ -476,31 +493,37 @@ function initMap() {
   // Drawing Tools Layer
   state.mapLayers.drawnItems = new L.FeatureGroup().addTo(state.map);
   
-  const drawEventName = (typeof L.Draw !== 'undefined' && L.Draw.Event && L.Draw.Event.CREATED) ? L.Draw.Event.CREATED : 'draw:created';
+  const handleDrawnShape = (e) => {
+    const layer = e.layer;
+    if (!layer) return;
+    state.mapLayers.drawnItems.clearLayers();
+    state.mapLayers.drawnItems.addLayer(layer);
+
+    const bounds = layer.getBounds();
+    const minLon = parseFloat(bounds.getWest().toFixed(4));
+    const minLat = parseFloat(bounds.getSouth().toFixed(4));
+    const maxLon = parseFloat(bounds.getEast().toFixed(4));
+    const maxLat = parseFloat(bounds.getNorth().toFixed(4));
+
+    const minLatInp = document.getElementById('map-min-lat');
+    const maxLatInp = document.getElementById('map-max-lat');
+    const minLonInp = document.getElementById('map-min-lon');
+    const maxLonInp = document.getElementById('map-max-lon');
+    if (minLatInp) minLatInp.value = minLat;
+    if (maxLatInp) maxLatInp.value = maxLat;
+    if (minLonInp) minLonInp.value = minLon;
+    if (maxLonInp) maxLonInp.value = maxLon;
+
+    state.mapFilters.customBounds = [minLon, minLat, maxLon, maxLat];
+    generateClimatologyForBounds(minLon, minLat, maxLon, maxLat, 'Drawn Custom AOI');
+    showToast(`Custom AOI Box Applied: [${minLat}°N, ${minLon}°E to ${maxLat}°N, ${maxLon}°E]`, 'success');
+  };
+
   if (state.map && typeof state.map.on === 'function') {
-    state.map.on(drawEventName, (e) => {
-      const layer = e.layer;
-      state.mapLayers.drawnItems.clearLayers();
-      state.mapLayers.drawnItems.addLayer(layer);
-
-      const bounds = layer.getBounds();
-      const minLon = parseFloat(bounds.getWest().toFixed(4));
-      const minLat = parseFloat(bounds.getSouth().toFixed(4));
-      const maxLon = parseFloat(bounds.getEast().toFixed(4));
-      const maxLat = parseFloat(bounds.getNorth().toFixed(4));
-
-      const minLatInp = document.getElementById('map-min-lat');
-      const maxLatInp = document.getElementById('map-max-lat');
-      const minLonInp = document.getElementById('map-min-lon');
-      const maxLonInp = document.getElementById('map-max-lon');
-      if (minLatInp) minLatInp.value = minLat;
-      if (maxLatInp) maxLatInp.value = maxLat;
-      if (minLonInp) minLonInp.value = minLon;
-      if (maxLonInp) maxLonInp.value = maxLon;
-
-      state.mapFilters.customBounds = [minLon, minLat, maxLon, maxLat];
-      generateClimatologyForBounds(minLon, minLat, maxLon, maxLat, 'Drawn Custom AOI');
-    });
+    state.map.on('draw:created', handleDrawnShape);
+    if (typeof L.Draw !== 'undefined' && L.Draw.Event && L.Draw.Event.CREATED) {
+      state.map.on(L.Draw.Event.CREATED, handleDrawnShape);
+    }
   }
 
   // Cursor coordinates HUD tracking
@@ -1686,13 +1709,27 @@ function renderRegionalCharts() {
 
 // --- GLOBAL EVENT LISTENERS ---
 function setupGlobalEvents() {
-  // Biome selector pills
-  document.getElementById('biome-pills').addEventListener('click', (e) => {
+  // Global Biome dropdown in top navbar
+  const globalBiomeSelect = document.getElementById('global-biome-select');
+  if (globalBiomeSelect) {
+    globalBiomeSelect.addEventListener('change', (e) => {
+      const region = e.target.value;
+      updateActiveRegion(region);
+      document.querySelectorAll('.biome-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.region === region);
+      });
+    });
+  }
+
+  // Biome selector pills in map header
+  document.getElementById('biome-pills')?.addEventListener('click', (e) => {
     const btn = e.target.closest('.biome-btn');
     if (!btn) return;
     document.querySelectorAll('.biome-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
-    updateActiveRegion(btn.dataset.region);
+    const region = btn.dataset.region;
+    if (globalBiomeSelect) globalBiomeSelect.value = region;
+    updateActiveRegion(region);
   });
 
   // Basemap switcher (Dark, Satellite, OSM, GIBS, Terrain)
@@ -1710,8 +1747,28 @@ function setupGlobalEvents() {
       else if (layer === 'gibs') state.mapLayers.tileLayer = state.mapLayers.gibsLayer.addTo(state.map);
       else if (layer === 'terrain') state.mapLayers.tileLayer = state.mapLayers.terrainLayer.addTo(state.map);
       else state.mapLayers.tileLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(state.map);
+      state.map.invalidateSize();
     }
   });
+
+  // Thermal Anomalies WMTS Layer Toggle (NASA GIBS)
+  const thermalToggleBtn = document.getElementById('btn-toggle-thermal-overlay');
+  if (thermalToggleBtn) {
+    thermalToggleBtn.addEventListener('click', () => {
+      audioFX.click();
+      state.mapFilters.showThermals = !state.mapFilters.showThermals;
+      thermalToggleBtn.classList.toggle('active', state.mapFilters.showThermals);
+      if (state.map && state.mapLayers.gibsThermalOverlay) {
+        if (state.mapFilters.showThermals) {
+          state.mapLayers.gibsThermalOverlay.addTo(state.map);
+          showToast('NASA GIBS Active Fire 375m Thermal Anomalies layer enabled', 'info');
+        } else {
+          state.map.removeLayer(state.mapLayers.gibsThermalOverlay);
+          showToast('NASA GIBS Thermal Anomalies layer hidden', 'info');
+        }
+      }
+    });
+  }
 
   // Visualization mode switcher (Hotspots / Clusters / Heatmap)
   document.getElementById('vis-mode-selector')?.addEventListener('click', (e) => {
@@ -2076,11 +2133,11 @@ function setupGlobalEvents() {
   });
 
   // Apply custom coordinate filter inputs
-  document.getElementById('btn-apply-map-coords').addEventListener('click', () => {
-    const minLat = parseFloat(document.getElementById('map-min-lat').value);
-    const maxLat = parseFloat(document.getElementById('map-max-lat').value);
-    const minLon = parseFloat(document.getElementById('map-min-lon').value);
-    const maxLon = parseFloat(document.getElementById('map-max-lon').value);
+  document.getElementById('btn-apply-map-coords')?.addEventListener('click', () => {
+    const minLat = parseFloat(document.getElementById('map-min-lat')?.value);
+    const maxLat = parseFloat(document.getElementById('map-max-lat')?.value);
+    const minLon = parseFloat(document.getElementById('map-min-lon')?.value);
+    const maxLon = parseFloat(document.getElementById('map-max-lon')?.value);
 
     if (isNaN(minLat) || isNaN(maxLat) || isNaN(minLon) || isNaN(maxLon)) {
       showToast('Please enter valid numeric latitude and longitude values.', 'warning');
@@ -2088,8 +2145,19 @@ function setupGlobalEvents() {
     }
 
     state.mapFilters.customBounds = [minLon, minLat, maxLon, maxLat];
+    if (state.mapLayers.drawnItems) {
+      state.mapLayers.drawnItems.clearLayers();
+      const rect = L.rectangle([[minLat, minLon], [maxLat, maxLon]], {
+        color: '#38bdf8',
+        weight: 2,
+        fillOpacity: 0.15
+      });
+      state.mapLayers.drawnItems.addLayer(rect);
+    }
     applyMapFilters();
     fitMapToBounds(state.mapFilters.customBounds);
+    generateClimatologyForBounds(minLon, minLat, maxLon, maxLat, `AOI (${minLat}°–${maxLat}°N)`);
+    showToast(`Custom AOI Applied: [${minLat}°N, ${minLon}°E to ${maxLat}°N, ${maxLon}°E]`, 'success');
   });
 
   // Sound FX Toggle in header & tour HUD

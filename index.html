@@ -20,7 +20,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css"/>
 
   <!-- Application Stylesheet with Cache Busting -->
-  <link rel="stylesheet" href="styles.css?v=2026.11.06.v4">
+  <link rel="stylesheet" href="styles.css?v=2026.11.06.v5">
 
   <!-- Leaflet JS, MarkerCluster, Heat, Draw, Chart.js & Three.js (3D Planetary WebGL) -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
@@ -123,7 +123,7 @@
   </aside>
   <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
 
-  <!-- Global Operational Navigation Bar (5 Workspaces + Active Biome Selector) -->
+  <!-- Global Operational Navigation Bar (5 Workspaces + Active Biome Dropdown) -->
   <nav class="app-navbar">
     <div class="nav-container" id="nav-container-scroll">
       <ul class="nav-tabs" id="main-nav-tabs">
@@ -135,16 +135,18 @@
       </ul>
     </div>
 
-    <!-- Embedded Biome & AOI Selector Strip -->
-    <div class="navbar-biome-strip">
-      <span class="biome-strip-label">AOI:</span>
-      <div class="biome-pills" id="biome-pills">
-        <button class="biome-btn active" data-region="california">California</button>
-        <button class="biome-btn" data-region="amazon">Amazon</button>
-        <button class="biome-btn" data-region="australia">SE Australia</button>
-        <button class="biome-btn" data-region="siberia">Siberia</button>
-        <button class="biome-btn" data-region="mediterranean">Mediterranean</button>
-        <button class="biome-btn" data-region="pantanal">Pantanal</button>
+    <!-- Right Header AOI Selector & Model Badge -->
+    <div class="navbar-right-controls">
+      <div class="nav-aoi-select-group">
+        <label for="global-biome-select" class="nav-aoi-label">AOI:</label>
+        <select id="global-biome-select" class="nav-aoi-select" title="Switch Global Area of Interest">
+          <option value="california" selected>Northern California</option>
+          <option value="amazon">Amazon Arc</option>
+          <option value="australia">SE Australia</option>
+          <option value="siberia">Boreal Siberia</option>
+          <option value="mediterranean">Mediterranean</option>
+          <option value="pantanal">Pantanal Wetland</option>
+        </select>
       </div>
       <div class="model-badge-pill" id="global-active-model-badge" title="Active Sensor Calibration Model">Theil-Sen (R²=0.989)</div>
     </div>
@@ -164,40 +166,55 @@
         
         <!-- LEFT PANE: Geospatial Intelligence Map (45% Width) -->
         <div class="workbench-map-pane">
-          <!-- Top Map Controls Bar -->
+          <!-- Top Map Controls Bar (Row 1: Basemap & Draw, Row 2: Biomes) -->
           <div class="workbench-map-header">
-            <div class="map-ctrl-group">
-              <span class="ctrl-tag">Basemap:</span>
-              <div class="segmented-control xs" id="basemap-selector">
-                <button class="seg-btn active" data-layer="dark">Dark Matter</button>
-                <button class="seg-btn" data-layer="gibs">NASA GIBS</button>
-                <button class="seg-btn" data-layer="satellite">Satellite</button>
-                <button class="seg-btn" data-layer="terrain">Terrain</button>
-                <button class="seg-btn" data-layer="osm">OSM</button>
+            <div class="map-ctrl-row">
+              <div class="map-ctrl-group">
+                <span class="ctrl-tag">Basemap:</span>
+                <div class="segmented-control xs" id="basemap-selector">
+                  <button class="seg-btn active" data-layer="dark">Dark Matter</button>
+                  <button class="seg-btn" data-layer="gibs">NASA GIBS</button>
+                  <button class="seg-btn" data-layer="satellite">Satellite</button>
+                  <button class="seg-btn" data-layer="terrain">Terrain</button>
+                  <button class="seg-btn" data-layer="osm">OSM</button>
+                </div>
+              </div>
+
+              <!-- Thermal Anomalies Overlay Toggle -->
+              <button class="btn btn-xs btn-gibs-thermal" id="btn-toggle-thermal-overlay" title="Toggle NASA GIBS Active Fire Thermal Anomalies WMTS Layer">
+                🔥 GIBS 375m Thermals
+              </button>
+
+              <!-- Diurnal Filter -->
+              <div class="map-ctrl-group">
+                <span class="ctrl-tag">Orbit:</span>
+                <div class="segmented-control xs" id="map-diurnal-filter">
+                  <button class="seg-btn active" data-diurnal="all">All</button>
+                  <button class="seg-btn" data-diurnal="day">Day</button>
+                  <button class="seg-btn" data-diurnal="night">Night</button>
+                </div>
+              </div>
+
+              <!-- Drawing Controls -->
+              <div class="map-ctrl-group aoi-draw-btns">
+                <button class="btn btn-xs btn-secondary" id="btn-draw-rect" title="Draw bounding box rectangle on map">Draw Box</button>
+                <button class="btn btn-xs btn-secondary" id="btn-draw-poly" title="Draw custom polygon on map">Draw Polygon</button>
+                <button class="btn btn-xs btn-ghost" id="btn-clear-draw" title="Clear drawn AOI">Clear</button>
+                <button class="btn btn-xs btn-ghost" id="btn-toggle-coord-drawer" title="Toggle manual Lat/Lon coordinates input drawer">⚙ Coords</button>
               </div>
             </div>
 
-            <!-- Thermal Anomalies Overlay Toggle -->
-            <button class="btn btn-xs btn-gibs-thermal" id="btn-toggle-thermal-overlay" title="Toggle NASA GIBS Active Fire Thermal Anomalies WMTS Layer">
-              🔥 GIBS 375m Thermals
-            </button>
-
-            <!-- Diurnal Filter -->
-            <div class="map-ctrl-group">
-              <span class="ctrl-tag">Orbit:</span>
-              <div class="segmented-control xs" id="map-diurnal-filter">
-                <button class="seg-btn active" data-diurnal="all">All</button>
-                <button class="seg-btn" data-diurnal="day">Day</button>
-                <button class="seg-btn" data-diurnal="night">Night</button>
+            <!-- Quick Biome Switcher Bar right in the Map Header -->
+            <div class="map-biome-row">
+              <span class="ctrl-tag">Quick AOI:</span>
+              <div class="biome-pills" id="biome-pills">
+                <button class="biome-btn active" data-region="california">Northern California</button>
+                <button class="biome-btn" data-region="amazon">Amazon Arc</button>
+                <button class="biome-btn" data-region="australia">SE Australia</button>
+                <button class="biome-btn" data-region="siberia">Boreal Siberia</button>
+                <button class="biome-btn" data-region="mediterranean">Mediterranean</button>
+                <button class="biome-btn" data-region="pantanal">Pantanal</button>
               </div>
-            </div>
-
-            <!-- Drawing Controls -->
-            <div class="map-ctrl-group aoi-draw-btns">
-              <button class="btn btn-xs btn-secondary" id="btn-draw-rect" title="Draw bounding box rectangle on map">Draw Box</button>
-              <button class="btn btn-xs btn-secondary" id="btn-draw-poly" title="Draw custom polygon on map">Draw Polygon</button>
-              <button class="btn btn-xs btn-ghost" id="btn-clear-draw" title="Clear drawn AOI">Clear</button>
-              <button class="btn btn-xs btn-ghost" id="btn-toggle-coord-drawer" title="Toggle manual Lat/Lon coordinates input drawer">⚙ Coords</button>
             </div>
           </div>
 
@@ -902,6 +919,6 @@
   </div>
 
   <!-- Core Application Script -->
-  <script src="app.js?v=2026.11.06.v4"></script>
+  <script src="app.js?v=2026.11.06.v5"></script>
 </body>
 </html>
