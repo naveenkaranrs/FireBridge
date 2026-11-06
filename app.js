@@ -351,6 +351,8 @@ function initRouter() {
         setTimeout(() => {
           renderComparisonCharts();
           initOpticalSimulator();
+          renderCliffReconcilerChart();
+          initDozierInverter();
         }, 150);
       }
     }
@@ -2344,117 +2346,633 @@ function initConstellationOrbitTracker() {
 }
 
 // ==========================================================================
-// TASK 2: INTERACTIVE OPTICAL RESOLUTION SPLIT-SCREEN SIMULATOR
+// TASK 2 & WORKSPACE 2: ADVANCED SENSOR HARMONIZATION LABORATORY ENGINE
 // ==========================================================================
-function initOpticalSimulator() {
-  const rangeInp = document.getElementById('sim-range-input');
-  const modisClip = document.getElementById('sim-modis-clip-layer');
-  const dividerLine = document.getElementById('sim-divider-line');
-  const autoSweepBtn = document.getElementById('btn-sim-auto-sweep');
-  const modeToggle = document.getElementById('sim-mode-toggle');
-  const harmonizedStat = document.getElementById('sim-harmonized-stat');
 
-  if (!rangeInp || !modisClip || !dividerLine) return;
+// Global state for Optical Simulator
+const opticalSimState = {
+  activePreset: 'punjab',
+  psfFilterActive: true,
+  sofievFilterActive: true,
+  igniteModeActive: false,
+  isAutoSweeping: false,
+  autoSweepTimer: null,
+  autoSweepAngle: 0,
+  splitPct: 50,
+  userFires: []
+};
 
-  let isAutoSweeping = false;
-  let sweepAnimationId = null;
-  let sweepAngle = 0;
+// Preset Fire Scenarios: [x, y, radius, FRP_MW, fireName]
+const PRESET_SCENARIOS = {
+  punjab: {
+    name: 'Agricultural Stubble Burning (Punjab)',
+    desc: 'Dense distribution of low-intensity field fires (1.2–3.4 MW). MODIS misses fires < 3.7 MW.',
+    fires: [
+      [120, 80, 4, 1.8, 'Field 12-A'], [145, 95, 5, 2.4, 'Field 12-B'], [180, 85, 3, 1.2, 'Field 13-A'],
+      [130, 140, 4, 1.9, 'Field 14-C'], [160, 160, 6, 3.1, 'Field 15-A'], [210, 130, 5, 2.7, 'Field 16-B'],
+      [250, 110, 4, 1.6, 'Field 17-A'], [280, 145, 7, 3.9, 'Field 18-C'], [320, 120, 3, 1.4, 'Field 19-A'],
+      [360, 90, 5, 2.8, 'Field 20-B'], [400, 130, 6, 3.2, 'Field 21-A'], [440, 105, 4, 1.7, 'Field 22-C'],
+      [480, 140, 8, 4.8, 'Field 23-A'], [520, 120, 5, 2.6, 'Field 24-B'], [560, 150, 4, 1.9, 'Field 25-A'],
+      [600, 110, 6, 3.4, 'Field 26-C'], [640, 145, 5, 2.5, 'Field 27-A'], [680, 125, 4, 1.8, 'Field 28-B'],
+      [720, 160, 7, 4.2, 'Field 29-A'], [760, 135, 5, 2.9, 'Field 30-C'], [800, 150, 4, 1.5, 'Field 31-A'],
+      [840, 120, 6, 3.3, 'Field 32-B'], [880, 155, 5, 2.7, 'Field 33-A'], [920, 130, 4, 1.9, 'Field 34-C'],
+      [960, 165, 8, 5.1, 'Field 35-A'], [1000, 140, 5, 2.8, 'Field 36-B'], [1040, 170, 4, 1.7, 'Field 37-A'],
+      [1080, 135, 6, 3.5, 'Field 38-C'], [1120, 160, 5, 2.6, 'Field 39-A'], [1160, 145, 4, 1.6, 'Field 40-B'],
+      // Second agricultural belt
+      [150, 240, 5, 2.6, 'Plot 41-A'], [190, 260, 4, 1.9, 'Plot 42-B'], [230, 235, 6, 3.4, 'Plot 43-A'],
+      [270, 270, 7, 4.4, 'Plot 44-C'], [310, 250, 5, 2.5, 'Plot 45-A'], [350, 280, 4, 1.8, 'Plot 46-B'],
+      [390, 245, 6, 3.6, 'Plot 47-A'], [430, 275, 5, 2.7, 'Plot 48-C'], [470, 255, 4, 1.7, 'Plot 49-A'],
+      [510, 290, 8, 5.4, 'Plot 50-B'], [550, 265, 5, 2.9, 'Plot 51-A'], [590, 295, 4, 1.8, 'Plot 52-C'],
+      [630, 270, 6, 3.8, 'Plot 53-A'], [670, 305, 5, 2.8, 'Plot 54-B'], [710, 280, 4, 1.9, 'Plot 55-A'],
+      [750, 315, 7, 4.6, 'Plot 56-C'], [790, 290, 5, 2.7, 'Plot 57-A'], [830, 325, 4, 1.7, 'Plot 58-B'],
+      [870, 300, 6, 3.7, 'Plot 59-A'], [910, 335, 5, 2.9, 'Plot 60-C'], [950, 310, 4, 1.8, 'Plot 61-A'],
+      [990, 345, 8, 5.2, 'Plot 62-B'], [1030, 320, 5, 2.6, 'Plot 63-A'], [1070, 350, 4, 1.6, 'Plot 64-C'],
+      [1110, 330, 6, 3.5, 'Plot 65-A'], [1150, 355, 5, 2.5, 'Plot 66-B']
+    ]
+  },
+  camp: {
+    name: 'Camp Fire Megafire Front (California)',
+    desc: 'High-intensity crown fire line (>100 MW). MODIS blooms into 3 giant saturated cells; VIIRS resolves advancing flame perimeters.',
+    fires: [
+      // Curved flaming head front
+      [220, 160, 16, 95.0, 'Head Fire Node 1'], [260, 175, 20, 145.0, 'Crown Fire Apex'], [300, 190, 22, 180.0, 'Core Fire Storm'],
+      [340, 200, 24, 240.0, 'Explosive Front'], [380, 205, 26, 310.0, 'Thermal Max Center'], [420, 200, 23, 220.0, 'Core Front East'],
+      [460, 190, 19, 160.0, 'Flank East 1'], [500, 175, 15, 110.0, 'Flank East 2'],
+      // Trailing flank line
+      [200, 210, 12, 65.0, 'West Flank 1'], [240, 235, 14, 85.0, 'West Flank 2'], [280, 255, 15, 92.0, 'West Flank 3'],
+      [320, 270, 13, 78.0, 'Rear Flank 1'], [360, 280, 12, 68.0, 'Rear Flank 2'], [400, 275, 14, 82.0, 'East Flank Rear'],
+      [440, 260, 15, 88.0, 'East Flank Mid'], [480, 240, 13, 74.0, 'East Flank Head'],
+      // Spot fires driven ahead by wind
+      [580, 140, 8, 28.0, 'Spot Fire Alpha'], [640, 120, 10, 42.0, 'Spot Fire Bravo'], [710, 105, 9, 36.0, 'Spot Fire Charlie'],
+      [780, 95, 7, 22.0, 'Spot Fire Delta'], [840, 90, 11, 48.0, 'Spot Fire Echo'], [910, 80, 8, 31.0, 'Spot Fire Foxtrot'],
+      [680, 220, 7, 24.0, 'Secondary Flare 1'], [750, 240, 9, 38.0, 'Secondary Flare 2'], [820, 260, 8, 32.0, 'Secondary Flare 3']
+    ]
+  },
+  siberia: {
+    name: 'Boreal Peat Smoldering (Yakutia)',
+    desc: 'Sub-canopy smoldering peat fires with low flame temperature. VIIRS 3.74µm channel detects subpixel thermal leakage.',
+    fires: [
+      [180, 120, 6, 2.4, 'Peat Seam 1'], [220, 140, 7, 2.9, 'Peat Seam 2'], [260, 130, 5, 1.8, 'Peat Seam 3'],
+      [340, 180, 8, 3.5, 'Peat Core Alpha'], [380, 200, 6, 2.2, 'Peat Seam 4'], [420, 190, 7, 2.8, 'Peat Core Beta'],
+      [520, 140, 6, 2.5, 'Smolder Zone 1'], [560, 160, 8, 3.8, 'Smolder Zone 2'], [600, 150, 5, 1.9, 'Smolder Zone 3'],
+      [700, 220, 7, 3.1, 'Taiga Peat 1'], [740, 240, 6, 2.3, 'Taiga Peat 2'], [780, 230, 9, 4.6, 'Taiga Core Vent'],
+      [880, 170, 6, 2.6, 'Boreal Smolder A'], [920, 190, 7, 3.2, 'Boreal Smolder B'], [960, 180, 5, 2.1, 'Boreal Smolder C'],
+      [1040, 250, 8, 3.9, 'Tundra Border 1'], [1080, 270, 6, 2.4, 'Tundra Border 2']
+    ]
+  },
+  amazon: {
+    name: 'Amazon Deforestation Arc (Mato Grosso)',
+    desc: 'Linear clear-cut slash fires aligned along access roads and pasture boundaries.',
+    fires: [
+      // Primary road axis line
+      [140, 310, 8, 8.5, 'Slash Border 01'], [190, 290, 10, 14.2, 'Slash Border 02'], [240, 270, 9, 12.0, 'Slash Border 03'],
+      [290, 250, 11, 18.5, 'Logging Road Front'], [340, 230, 8, 9.8, 'Slash Border 04'], [390, 210, 12, 22.4, 'Main Clear-Cut Node'],
+      [440, 190, 10, 15.6, 'Pasture Margin 01'], [490, 170, 9, 11.8, 'Pasture Margin 02'], [540, 150, 11, 19.2, 'Logging Axis North'],
+      [590, 130, 8, 8.9, 'Forest Edge 01'], [640, 110, 10, 16.4, 'Forest Edge 02'],
+      // Lateral clearings
+      [270, 340, 7, 7.2, 'Lateral Plot 1'], [320, 320, 8, 9.4, 'Lateral Plot 2'], [370, 300, 9, 13.5, 'Lateral Plot 3'],
+      [420, 280, 7, 6.8, 'Lateral Plot 4'], [470, 260, 8, 10.2, 'Lateral Plot 5'], [520, 240, 9, 14.8, 'Lateral Plot 6'],
+      [720, 180, 9, 13.2, 'Satellite Clear A'], [770, 200, 8, 9.5, 'Satellite Clear B'], [820, 220, 10, 17.6, 'Satellite Clear C'],
+      [870, 240, 7, 8.4, 'Satellite Clear D'], [940, 190, 8, 11.2, 'Jungle Fringe 1'], [990, 210, 9, 15.0, 'Jungle Fringe 2']
+    ]
+  }
+};
 
-  function updateSplit(pct) {
-    const clamped = Math.max(0, Math.min(100, pct));
-    modisClip.style.width = clamped + '%';
-    dividerLine.style.left = clamped + '%';
-    rangeInp.value = clamped;
+// Main function to draw optical resolution canvases
+function drawOpticalSimulatorCanvases() {
+  const cViirs = document.getElementById('canvas-sim-viirs');
+  const cModis = document.getElementById('canvas-sim-modis');
+  if (!cViirs || !cModis) return;
+
+  const w = cViirs.width || 1280;
+  const h = cViirs.height || 420;
+
+  const ctxV = cViirs.getContext('2d');
+  const ctxM = cModis.getContext('2d');
+  if (!ctxV || !ctxM) return;
+
+  // Active fire dataset: preset + user custom fires
+  const activeCfg = PRESET_SCENARIOS[opticalSimState.activePreset] || PRESET_SCENARIOS.punjab;
+  const allFires = [...activeCfg.fires, ...opticalSimState.userFires];
+
+  // Helper: Draw shared procedural infrared false-color terrain backdrop
+  function drawTerrainBackdrop(ctx) {
+    // Deep satellite space / dark topography base
+    const bgGrad = ctx.createLinearGradient(0, 0, w, h);
+    bgGrad.addColorStop(0, '#020617');
+    bgGrad.addColorStop(0.5, '#050c1e');
+    bgGrad.addColorStop(1, '#020617');
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, w, h);
+
+    // Subtle topographical contour ridges
+    ctx.strokeStyle = 'rgba(30, 41, 59, 0.45)';
+    ctx.lineWidth = 1;
+    for (let y = 40; y < h; y += 45) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      for (let x = 0; x <= w; x += 60) {
+        const offset = Math.sin((x + y * 2) * 0.012) * 16 + Math.cos(x * 0.02) * 8;
+        ctx.lineTo(x, y + offset);
+      }
+      ctx.stroke();
+    }
+
+    // Meandering turquoise river vein (hydrography)
+    ctx.strokeStyle = 'rgba(14, 116, 144, 0.35)';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(0, h * 0.75);
+    ctx.bezierCurveTo(w * 0.25, h * 0.85, w * 0.45, h * 0.55, w * 0.7, h * 0.65);
+    ctx.bezierCurveTo(w * 0.85, h * 0.72, w * 0.95, h * 0.45, w, h * 0.5);
+    ctx.stroke();
+
+    // Dark maroon burned scars
+    ctx.fillStyle = 'rgba(88, 28, 28, 0.22)';
+    ctx.beginPath();
+    ctx.ellipse(w * 0.3, h * 0.4, 110, 60, Math.PI / 6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(w * 0.75, h * 0.35, 140, 70, -Math.PI / 8, 0, Math.PI * 2);
+    ctx.fill();
   }
 
-  rangeInp.addEventListener('input', (e) => {
-    if (isAutoSweeping) stopAutoSweep();
-    updateSplit(parseFloat(e.target.value));
+  // =========================================================================
+  // 1. RENDER VIIRS 375m LAYER (True High-Definition Subpixel Resolution)
+  // =========================================================================
+  drawTerrainBackdrop(ctxV);
+
+  // Fine 375m subpixel grid (cell size = 26px)
+  const VIIRS_CELL = 26;
+  ctxV.strokeStyle = 'rgba(56, 189, 248, 0.14)';
+  ctxV.lineWidth = 1;
+  for (let x = 0; x < w; x += VIIRS_CELL) {
+    ctxV.beginPath(); ctxV.moveTo(x, 0); ctxV.lineTo(x, h); ctxV.stroke();
+  }
+  for (let y = 0; y < h; y += VIIRS_CELL) {
+    ctxV.beginPath(); ctxV.moveTo(0, y); ctxV.lineTo(w, y); ctxV.stroke();
+  }
+
+  let viirsCatchCount = 0;
+  let viirsTotalFRP = 0;
+
+  // Render each individual VIIRS subpixel fire detection
+  allFires.forEach(([x, y, r, frp, label]) => {
+    viirsCatchCount++;
+    viirsTotalFRP += frp;
+
+    // Subpixel grid bounding box alignment (375m cell)
+    const cellX = Math.floor(x / VIIRS_CELL) * VIIRS_CELL;
+    const cellY = Math.floor(y / VIIRS_CELL) * VIIRS_CELL;
+
+    // Cyan detection bounding box
+    ctxV.strokeStyle = 'rgba(56, 189, 248, 0.85)';
+    ctxV.lineWidth = 1.5;
+    ctxV.strokeRect(cellX + 1, cellY + 1, VIIRS_CELL - 2, VIIRS_CELL - 2);
+
+    ctxV.fillStyle = 'rgba(56, 189, 248, 0.12)';
+    ctxV.fillRect(cellX + 1, cellY + 1, VIIRS_CELL - 2, VIIRS_CELL - 2);
+
+    // Flaming subpixel core
+    const flameGrad = ctxV.createRadialGradient(x, y, 1, x, y, Math.max(4, r * 0.7));
+    flameGrad.addColorStop(0, '#ffffff');
+    flameGrad.addColorStop(0.3, '#fef08a');
+    flameGrad.addColorStop(0.7, '#f97316');
+    flameGrad.addColorStop(1, 'rgba(239, 68, 68, 0.85)');
+    ctxV.fillStyle = flameGrad;
+    ctxV.beginPath();
+    ctxV.arc(x, y, Math.max(3, r * 0.7), 0, Math.PI * 2);
+    ctxV.fill();
+
+    // FRP Label Tag for major fires
+    if (frp >= 2.5 || label.includes('Core') || label.includes('Apex') || label.includes('Node')) {
+      ctxV.fillStyle = 'rgba(15, 23, 42, 0.85)';
+      ctxV.fillRect(cellX - 4, cellY - 14, 42, 12);
+      ctxV.strokeStyle = 'rgba(56, 189, 248, 0.5)';
+      ctxV.strokeRect(cellX - 4, cellY - 14, 42, 12);
+      ctxV.fillStyle = '#38bdf8';
+      ctxV.font = '8px "JetBrains Mono", monospace';
+      ctxV.fillText(frp.toFixed(1) + 'MW', cellX - 2, cellY - 5);
+    }
   });
 
-  // Auto-Sweep Demo using requestAnimationFrame
-  function sweepStep() {
-    sweepAngle += 0.025;
-    const pct = 50 + 38 * Math.sin(sweepAngle);
-    updateSplit(pct);
-    if (isAutoSweeping) {
-      sweepAnimationId = requestAnimationFrame(sweepStep);
-    }
+  // =========================================================================
+  // 2. RENDER MODIS 1,000m LAYER (Coarse Spatial Footprint + PSF + Sofiev Cutoff)
+  // =========================================================================
+  drawTerrainBackdrop(ctxM);
+
+  // Coarse 1,000m pixel grid (cell size = 68px, ~7.11x area of VIIRS_CELL)
+  const MODIS_CELL = 68;
+  ctxM.strokeStyle = 'rgba(239, 68, 68, 0.28)';
+  ctxM.lineWidth = 1.5;
+  for (let x = 0; x < w; x += MODIS_CELL) {
+    ctxM.beginPath(); ctxM.moveTo(x, 0); ctxM.lineTo(x, h); ctxM.stroke();
+  }
+  for (let y = 0; y < h; y += MODIS_CELL) {
+    ctxM.beginPath(); ctxM.moveTo(0, y); ctxM.lineTo(w, y); ctxM.stroke();
   }
 
-  function startAutoSweep() {
-    isAutoSweeping = true;
-    if (autoSweepBtn) {
-      autoSweepBtn.classList.add('active');
-      autoSweepBtn.innerHTML = '<span class="sweep-icon">⏸</span> Pause Auto-Sweep';
+  // Group fires into MODIS 1km cells to simulate spatial convolution and energy aggregation
+  const modisGridCells = {};
+  allFires.forEach(([x, y, r, frp, label]) => {
+    const col = Math.floor(x / MODIS_CELL);
+    const row = Math.floor(y / MODIS_CELL);
+    const key = `${col}_${row}`;
+    if (!modisGridCells[key]) {
+      modisGridCells[key] = {
+        col, row,
+        centerX: col * MODIS_CELL + MODIS_CELL / 2,
+        centerY: row * MODIS_CELL + MODIS_CELL / 2,
+        fires: [],
+        totalFRP: 0
+      };
     }
-    sweepAnimationId = requestAnimationFrame(sweepStep);
-    audioFX.step();
+    modisGridCells[key].fires.push([x, y, r, frp, label]);
+    modisGridCells[key].totalFRP += frp;
+  });
+
+  let modisCatchCount = 0;
+  let modisTotalFRP = 0;
+
+  Object.values(modisGridCells).forEach(cell => {
+    // Sofiev & Konovalov minimum detection threshold filter:
+    // If aggregate cell FRP is below ~3.7 MW, MODIS detectors fail to trigger
+    const isDetected = !opticalSimState.sofievFilterActive || cell.totalFRP >= 3.7;
+
+    if (isDetected) {
+      modisCatchCount++;
+      modisTotalFRP += cell.totalFRP * 0.78; // Atmospheric & PSF convolution attenuation
+
+      // MODIS 1km bounding box highlight
+      const bx = cell.col * MODIS_CELL;
+      const by = cell.row * MODIS_CELL;
+      ctxM.strokeStyle = 'rgba(239, 68, 68, 0.85)';
+      ctxM.lineWidth = 2;
+      ctxM.strokeRect(bx + 1, by + 1, MODIS_CELL - 2, MODIS_CELL - 2);
+
+      ctxM.fillStyle = 'rgba(239, 68, 68, 0.15)';
+      ctxM.fillRect(bx + 1, by + 1, MODIS_CELL - 2, MODIS_CELL - 2);
+
+      // PSF Gaussian spatial convolution (smearing all subpixel fires into single blended blob)
+      const blurRadius = opticalSimState.psfFilterActive ? Math.min(56, 28 + cell.totalFRP * 0.35) : 22;
+      const psfGrad = ctxM.createRadialGradient(cell.centerX, cell.centerY, 4, cell.centerX, cell.centerY, blurRadius);
+      psfGrad.addColorStop(0, 'rgba(255, 237, 213, 0.95)');
+      psfGrad.addColorStop(0.35, 'rgba(249, 115, 22, 0.7)');
+      psfGrad.addColorStop(0.75, 'rgba(239, 68, 68, 0.35)');
+      psfGrad.addColorStop(1, 'rgba(239, 68, 68, 0)');
+
+      ctxM.fillStyle = psfGrad;
+      ctxM.beginPath();
+      ctxM.arc(cell.centerX, cell.centerY, blurRadius, 0, Math.PI * 2);
+      ctxM.fill();
+
+      // Centroid label
+      ctxM.fillStyle = 'rgba(15, 23, 42, 0.85)';
+      ctxM.fillRect(bx + 4, by + 4, 52, 14);
+      ctxM.strokeStyle = 'rgba(239, 68, 68, 0.5)';
+      ctxM.strokeRect(bx + 4, by + 4, 52, 14);
+      ctxM.fillStyle = '#ef4444';
+      ctxM.font = '8px "JetBrains Mono", monospace';
+      ctxM.fillText('1km·' + cell.totalFRP.toFixed(1) + 'MW', bx + 6, by + 14);
+    } else {
+      // Small fire missed by MODIS (< 3.7 MW cutoff)
+      cell.fires.forEach(([fx, fy]) => {
+        ctxM.strokeStyle = 'rgba(248, 113, 113, 0.4)';
+        ctxM.lineWidth = 1;
+        ctxM.beginPath();
+        ctxM.moveTo(fx - 4, fy - 4); ctxM.lineTo(fx + 4, fy + 4);
+        ctxM.moveTo(fx + 4, fy - 4); ctxM.lineTo(fx - 4, fy + 4);
+        ctxM.stroke();
+      });
+      ctxM.fillStyle = 'rgba(248, 113, 113, 0.6)';
+      ctxM.font = '7px "JetBrains Mono", monospace';
+      ctxM.fillText('✕ MISSED (<3.7MW)', cell.centerX - 30, cell.centerY + 4);
+    }
+  });
+
+  // Update Telemetry Display Ticker
+  const countDisp = document.getElementById('sim-counts-display');
+  if (countDisp) {
+    const ratio = (viirsCatchCount / Math.max(1, modisCatchCount)).toFixed(2);
+    countDisp.innerHTML = `MODIS: <strong>${modisCatchCount}</strong> hotspots | VIIRS: <strong>${viirsCatchCount}</strong> hotspots (<strong class="text-orange">${ratio}× Raw Cliff</strong>)`;
+  }
+}
+
+// Controller for Optical Resolution Split Simulator
+function initOpticalSimulator() {
+  const sliderBox = document.getElementById('split-slider-box');
+  const modisClip = document.getElementById('sim-modis-clip');
+  const divider = document.getElementById('split-divider');
+  const handle = document.getElementById('split-handle');
+  const pctLabel = document.getElementById('split-pct-label');
+  const loupe = document.getElementById('sim-hover-loupe');
+  const loupeCoords = document.getElementById('loupe-coords');
+  const loupeFrp = document.getElementById('loupe-frp');
+  const loupeStatus = document.getElementById('loupe-status');
+
+  if (!sliderBox || !modisClip || !divider) return;
+
+  function setSplit(pct) {
+    const clamped = Math.max(0, Math.min(100, pct));
+    opticalSimState.splitPct = clamped;
+    modisClip.style.width = clamped + '%';
+    divider.style.left = clamped + '%';
+    if (pctLabel) pctLabel.textContent = Math.round(clamped) + '%';
   }
 
-  function stopAutoSweep() {
-    isAutoSweeping = false;
-    if (autoSweepBtn) {
-      autoSweepBtn.classList.remove('active');
-      autoSweepBtn.innerHTML = '<span class="sweep-icon">⇋</span> Auto-Sweep Demo';
-    }
-    if (sweepAnimationId) cancelAnimationFrame(sweepAnimationId);
+  // Interactive mouse/touch dragging
+  let isDragging = false;
+  function handleDrag(clientX) {
+    const rect = sliderBox.getBoundingClientRect();
+    const pct = ((clientX - rect.left) / rect.width) * 100;
+    setSplit(pct);
   }
 
-  if (autoSweepBtn) {
-    autoSweepBtn.addEventListener('click', () => {
-      audioFX.click();
-      if (isAutoSweeping) stopAutoSweep();
-      else startAutoSweep();
+  if (handle) {
+    handle.addEventListener('mousedown', (e) => {
+      isDragging = true;
+      e.preventDefault();
+      e.stopPropagation();
+    });
+    handle.addEventListener('dblclick', () => {
+      setSplit(50);
+      showToast('Split reset to 50% / 50%', 'info');
     });
   }
 
-  // Mode Toggles (Raw, PSF, Sofiev)
-  if (modeToggle) {
-    modeToggle.addEventListener('click', (e) => {
-      const btn = e.target.closest('.seg-btn');
-      if (!btn) return;
+  sliderBox.addEventListener('mousedown', (e) => {
+    if (opticalSimState.igniteModeActive) {
+      // User is planting a custom fire!
+      const rect = sliderBox.getBoundingClientRect();
+      const scaleX = 1280 / rect.width;
+      const scaleY = 420 / rect.height;
+      const clickX = (e.clientX - rect.left) * scaleX;
+      const clickY = (e.clientY - rect.top) * scaleY;
+      const customFrp = parseFloat((Math.random() * 4.5 + 1.2).toFixed(1));
+      opticalSimState.userFires.push([clickX, clickY, 6, customFrp, 'User Fire #' + (opticalSimState.userFires.length + 1)]);
+      drawOpticalSimulatorCanvases();
       audioFX.click();
-      modeToggle.querySelectorAll('.seg-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
+      showToast(`Planted fire at (${Math.round(clickX)}, ${Math.round(clickY)}) • FRP: ${customFrp} MW`, 'success');
+      return;
+    }
+    isDragging = true;
+    handleDrag(e.clientX);
+  });
 
-      const mode = btn.dataset.sim;
-      const viirsLayer = document.querySelector('.sim-layer-viirs');
-      const viirsBoxes = document.querySelectorAll('.viirs-detection-box');
+  window.addEventListener('mousemove', (e) => {
+    if (isDragging) handleDrag(e.clientX);
+  });
 
-      if (mode === 'raw') {
-        if (viirsLayer) viirsLayer.style.filter = 'none';
-        viirsBoxes.forEach(b => b.style.opacity = '1');
-        if (harmonizedStat) harmonizedStat.textContent = '1.03 MODIS-Eq Events';
-      } else if (mode === 'psf') {
-        // Point Spread Function Gaussian convolution representation
-        if (viirsLayer) viirsLayer.style.filter = 'drop-shadow(0 0 16px rgba(249, 115, 22, 0.7))';
-        viirsBoxes.forEach(b => b.style.opacity = '0.9');
-        if (harmonizedStat) harmonizedStat.textContent = 'PSF Matched (1.0000 R²)';
-      } else if (mode === 'sofiev') {
-        // Sofiev >= 3.7 MW filter: small spot fires (< 3.7 MW) dim out
-        if (viirsLayer) viirsLayer.style.filter = 'none';
-        viirsBoxes.forEach(b => {
-          const isSmall = b.title.includes('Spot fire') || b.title.includes('2.4 MW') || b.title.includes('3.1 MW') || b.title.includes('1.0 MW');
-          b.style.opacity = isSmall ? '0.15' : '1';
-        });
-        if (harmonizedStat) harmonizedStat.textContent = 'Energy Filtered (1 Event)';
+  window.addEventListener('mouseup', () => {
+    isDragging = false;
+  });
+
+  // Hover Loupe HUD inspector
+  sliderBox.addEventListener('mousemove', (e) => {
+    if (!loupe) return;
+    const rect = sliderBox.getBoundingClientRect();
+    const normX = (e.clientX - rect.left) / rect.width;
+    const normY = (e.clientY - rect.top) / rect.height;
+
+    const lat = (39.0 + (1 - normY) * 2.5).toFixed(3);
+    const lon = (-(120.0 + normX * 3.0)).toFixed(3);
+
+    if (loupeCoords) loupeCoords.textContent = `Target: Lat ${lat}°N, Lon ${lon}°W`;
+    if (loupeFrp) {
+      const activeFires = PRESET_SCENARIOS[opticalSimState.activePreset]?.fires || [];
+      const nearest = activeFires[Math.floor(normX * activeFires.length)] || [0, 0, 0, 14.8];
+      loupeFrp.textContent = `${nearest[3]} MW (${normX * 100 < opticalSimState.splitPct ? 'MODIS Blended' : 'VIIRS Resolved'})`;
+    }
+    if (loupeStatus) {
+      const isModisSide = normX * 100 < opticalSimState.splitPct;
+      loupeStatus.textContent = isModisSide ? 'MODIS: PSF Smeared (1.00 km²)' : 'VIIRS: 375m Subpixel Resolved';
+      loupeStatus.className = 'lv ' + (isModisSide ? 'text-orange' : 'text-cyan');
+    }
+  });
+
+  // Auto-Sweep Demo
+  const autoSweepBtn = document.getElementById('btn-sim-auto-sweep');
+  if (autoSweepBtn) {
+    autoSweepBtn.addEventListener('click', () => {
+      audioFX.click();
+      if (opticalSimState.isAutoSweeping) {
+        clearInterval(opticalSimState.autoSweepTimer);
+        opticalSimState.autoSweepTimer = null;
+        opticalSimState.isAutoSweeping = false;
+        autoSweepBtn.classList.remove('active');
+        autoSweepBtn.textContent = '▶ Auto-Sweep Demo';
+      } else {
+        opticalSimState.isAutoSweeping = true;
+        autoSweepBtn.classList.add('active');
+        autoSweepBtn.textContent = '⏸ Pause Auto-Sweep';
+        opticalSimState.autoSweepTimer = setInterval(() => {
+          opticalSimState.autoSweepAngle += 0.035;
+          const pct = 50 + 36 * Math.sin(opticalSimState.autoSweepAngle);
+          setSplit(pct);
+        }, 30);
       }
     });
   }
 
-  // Expose auto-sweep for guided tour
-  window.fireBridgeSim = {
-    startAutoSweep,
-    stopAutoSweep,
-    updateSplit
-  };
+  // Preset Buttons
+  const presetBtns = document.querySelectorAll('.btn-preset[data-preset]');
+  presetBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      audioFX.click();
+      presetBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      opticalSimState.activePreset = btn.dataset.preset;
+      opticalSimState.userFires = [];
+      drawOpticalSimulatorCanvases();
+      showToast('Loaded Fire Regime: ' + btn.textContent.trim(), 'info');
+    });
+  });
+
+  // PSF Toggle
+  const psfBtn = document.getElementById('btn-sim-psf-filter');
+  if (psfBtn) {
+    psfBtn.addEventListener('click', () => {
+      audioFX.click();
+      opticalSimState.psfFilterActive = !opticalSimState.psfFilterActive;
+      psfBtn.classList.toggle('active', opticalSimState.psfFilterActive);
+      drawOpticalSimulatorCanvases();
+      showToast(opticalSimState.psfFilterActive ? 'PSF Gaussian Blur Active (σ=500m)' : 'PSF Convolution Disabled', 'info');
+    });
+  }
+
+  // Sofiev Filter Toggle
+  const sofievBtn = document.getElementById('btn-sim-sofiev-filter');
+  if (sofievBtn) {
+    sofievBtn.addEventListener('click', () => {
+      audioFX.click();
+      opticalSimState.sofievFilterActive = !opticalSimState.sofievFilterActive;
+      sofievBtn.classList.toggle('active', opticalSimState.sofievFilterActive);
+      drawOpticalSimulatorCanvases();
+      showToast(opticalSimState.sofievFilterActive ? 'Sofiev Truncation Applied (FRP ≥ 3.7 MW)' : 'Full Sensitivity Active (< 3.7 MW allowed)', 'info');
+    });
+  }
+
+  // Ignite Fire Tool
+  const igniteBtn = document.getElementById('btn-sim-ignite-tool');
+  if (igniteBtn) {
+    igniteBtn.addEventListener('click', () => {
+      audioFX.click();
+      opticalSimState.igniteModeActive = !opticalSimState.igniteModeActive;
+      igniteBtn.classList.toggle('active', opticalSimState.igniteModeActive);
+      sliderBox.style.cursor = opticalSimState.igniteModeActive ? 'pointer' : 'crosshair';
+      showToast(opticalSimState.igniteModeActive ? 'Fire Planting Active: Click on terrain to plant fires!' : 'Standard Inspector Mode', 'warning');
+    });
+  }
+
+  // Reset Scene
+  const resetBtn = document.getElementById('btn-sim-reset');
+  if (resetBtn) {
+    resetBtn.addEventListener('click', () => {
+      audioFX.click();
+      opticalSimState.userFires = [];
+      drawOpticalSimulatorCanvases();
+      showToast('Simulator scene reset to preset fires', 'info');
+    });
+  }
+
+  // Initial draw
+  drawOpticalSimulatorCanvases();
 }
 
 // ==========================================================================
+// MULTI-DECADAL 2012 SENSOR CLIFF & BIAS RECONCILER CHART
+// ==========================================================================
+let cliffChartInstance = null;
+let currentCliffMode = 'harmonized';
+
+function renderCliffReconcilerChart() {
+  const chartEl = document.getElementById('cliff-reconciler-chart');
+  if (!chartEl || !chartEl.getContext) return;
+
+  const years = Array.from({ length: 27 }, (_, i) => 2000 + i);
+
+  // Pre-2012 MODIS observations (2000–2011)
+  const preModis = [1380, 1420, 1490, 1440, 1360, 1510, 1480, 1560, 1430, 1390, 1460, 1520];
+
+  // Post-2012 MODIS (stays low at ~1,400–1,600)
+  const postModis = [1540, 1480, 1610, 1580, 1490, 1650, 1620, 1570, 1710, 1680, 1640, 1720, 1690, 1750, 1780];
+
+  // Post-2012 Raw VIIRS (unharmonized jumps 3.8x to ~5,400–6,500)
+  const postViirsRaw = [5200, 4980, 5600, 5450, 5150, 5800, 5700, 5450, 6100, 5950, 5800, 6200, 6050, 6300, 6450];
+
+  // Harmonized continuous multi-decadal series (Theil-Sen / PSF calibrated baseline)
+  const harmonizedFull = [
+    1380, 1420, 1490, 1440, 1360, 1510, 1480, 1560, 1430, 1390, 1460, 1520, // 2000-2011
+    1530, 1475, 1600, 1570, 1485, 1635, 1610, 1560, 1695, 1665, 1625, 1705, 1675, 1735, 1765 // 2012-2026
+  ];
+
+  // Full raw series with the artificial 2012 vertical cliff jump
+  const rawUnharmonized = [
+    ...preModis,
+    ...postViirsRaw
+  ];
+
+  // Sensor bias delta (difference between raw cliff and harmonized)
+  const biasDelta = rawUnharmonized.map((raw, idx) => (idx >= 12 ? raw - harmonizedFull[idx] : 0));
+
+  if (cliffChartInstance) cliffChartInstance.destroy();
+
+  const datasets = [];
+
+  if (currentCliffMode === 'raw') {
+    datasets.push({
+      label: '⚠️ Raw Unharmonized Hotspots (3.8× Artificial Cliff at 2012)',
+      data: rawUnharmonized,
+      borderColor: '#ef4444',
+      backgroundColor: 'rgba(239, 68, 68, 0.15)',
+      borderWidth: 2.5,
+      pointRadius: 3,
+      fill: true,
+      tension: 0.2
+    });
+  } else if (currentCliffMode === 'harmonized') {
+    datasets.push({
+      label: '✅ Harmonized Multi-Decadal Baseline (Theil-Sen Robust Operator)',
+      data: harmonizedFull,
+      borderColor: '#22c55e',
+      backgroundColor: 'rgba(34, 197, 94, 0.12)',
+      borderWidth: 2.5,
+      pointRadius: 3,
+      fill: true,
+      tension: 0.2
+    });
+    datasets.push({
+      label: 'MODIS 1km Reference Overlap',
+      data: [...preModis, ...postModis],
+      borderColor: '#38bdf8',
+      borderWidth: 1.5,
+      borderDash: [5, 5],
+      pointRadius: 2,
+      tension: 0.2
+    });
+  } else if (currentCliffMode === 'diff') {
+    datasets.push({
+      label: '📊 Removed Sensor Discontinuity Bias Area (Δ 2012–2026)',
+      data: biasDelta,
+      borderColor: '#f97316',
+      backgroundColor: 'rgba(249, 115, 22, 0.25)',
+      borderWidth: 2,
+      pointRadius: 3,
+      fill: true,
+      tension: 0.2
+    });
+  }
+
+  cliffChartInstance = new Chart(chartEl.getContext('2d'), {
+    type: 'line',
+    data: { labels: years, datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      scales: {
+        x: {
+          title: { display: true, text: 'Observation Year (2000–2026 NASA Synchronous Record)', color: '#64748b' },
+          ticks: { color: '#64748b', maxTicksLimit: 14 },
+          grid: { color: 'rgba(255, 255, 255, 0.05)' }
+        },
+        y: {
+          title: { display: true, text: 'Annual Active Fire Hotspot Detections', color: '#64748b' },
+          ticks: { color: '#64748b' },
+          grid: { color: 'rgba(255, 255, 255, 0.05)' }
+        }
+      },
+      plugins: {
+        legend: { labels: { color: '#94a3b8', font: { family: 'Inter', size: 11 } } },
+        tooltip: {
+          backgroundColor: 'rgba(15, 23, 42, 0.95)',
+          titleColor: '#38bdf8',
+          bodyColor: '#f1f5f9',
+          borderColor: 'rgba(56, 189, 248, 0.3)',
+          borderWidth: 1
+        }
+      }
+    }
+  });
+
+  // Wire up mode switch buttons
+  const modeSwitch = document.getElementById('cliff-mode-switch');
+  if (modeSwitch && !modeSwitch.dataset.bound) {
+    modeSwitch.dataset.bound = 'true';
+    modeSwitch.querySelectorAll('button[data-mode]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        audioFX.click();
+        modeSwitch.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentCliffMode = btn.dataset.mode;
+        renderCliffReconcilerChart();
+      });
+    });
+  }
+}
 
 // ==========================================================================
-// WORKSPACE 2: SENSOR HARMONIZATION LAB CONTROLLER
+// WORKSPACE 2: SENSOR HARMONIZATION LAB CONTROLLER & LIVE CALCULATOR
 // ==========================================================================
 function initHarmonizationLab() {
   // 5 Calibration Model Cards click handlers
@@ -2474,148 +2992,172 @@ function initHarmonizationLab() {
       const modelKey = card.dataset.model;
       state.currentHarmonizationModel = modelKey;
       updateModelKpiDisplay();
-      showToast('Model switched to: ' + card.querySelector('strong').textContent.trim(), 'info');
+      calculateLiveHarmonization();
+      renderComparisonCharts();
+      showToast('Switched to model: ' + card.querySelector('strong').textContent.trim(), 'info');
     });
   });
 
-  // Optical Simulator Interactive Split Dragging
-  const sliderBox = document.getElementById('split-slider-box');
-  const modisClip = document.getElementById('sim-modis-clip');
-  const divider = document.getElementById('split-divider');
+  // Interactive Live Observation Operator Calculator
+  const sliderCalc = document.getElementById('slider-calc-raw');
+  const numCalc = document.getElementById('num-calc-raw');
+  const dirBtns = document.querySelectorAll('.btn-calc-dir[data-dir]');
+  let calcDirection = 'viirs_to_modis';
 
-  if (sliderBox && modisClip && divider) {
-    let isDragging = false;
-    function setSplitPosition(clientX) {
-      const rect = sliderBox.getBoundingClientRect();
-      let pct = ((clientX - rect.left) / rect.width) * 100;
-      pct = Math.max(0, Math.min(100, pct));
-      modisClip.style.width = pct + '%';
-      divider.style.left = pct + '%';
+  dirBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      audioFX.click();
+      dirBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      calcDirection = btn.dataset.dir;
+
+      const inputLbl = document.getElementById('calc-input-label');
+      const outLbl = document.getElementById('calc-output-label');
+      if (calcDirection === 'viirs_to_modis') {
+        if (inputLbl) inputLbl.textContent = 'Raw VIIRS Hotspot Count (Monthly):';
+        if (outLbl) outLbl.textContent = 'Harmonized MODIS-Equivalent:';
+      } else {
+        if (inputLbl) inputLbl.textContent = 'Raw MODIS Hotspot Count (Monthly):';
+        if (outLbl) outLbl.textContent = 'Harmonized VIIRS-Equivalent:';
+      }
+      calculateLiveHarmonization();
+    });
+  });
+
+  function calculateLiveHarmonization() {
+    const rawVal = parseFloat(sliderCalc ? sliderCalc.value : 1250);
+    const m = state.currentHarmonizationModel || 'ols';
+    let harmVal = 0;
+    let ci = 0;
+    let formula = '';
+
+    if (calcDirection === 'viirs_to_modis') {
+      if (m === 'ols') {
+        harmVal = Math.max(0, 0.3298 * rawVal - 24.18);
+        ci = harmVal * 0.062;
+        formula = 'N_MODIS = 0.3298 × N_VIIRS - 24.18';
+      } else if (m === 'theil_sen') {
+        harmVal = Math.max(0, 0.3185 * rawVal - 18.42);
+        ci = harmVal * 0.048;
+        formula = 'N_MODIS = 0.3185 × N_VIIRS - 18.42 (Theil-Sen Median)';
+      } else if (m === 'pixel_area') {
+        harmVal = Math.max(0, rawVal * Math.pow(0.14 / 1.00, 0.88));
+        ci = harmVal * 0.085;
+        formula = 'N_MODIS = N_VIIRS × (0.14/1.00)^0.88 (PSF)';
+      } else if (m === 'sofiev') {
+        harmVal = Math.max(0, rawVal * 0.285 + 4.2);
+        ci = harmVal * 0.042;
+        formula = 'N_MODIS = N_VIIRS[FRP ≥ 3.7 MW] × 1.082';
+      } else if (m === 'quantile') {
+        harmVal = Math.max(0, 0.314 * Math.pow(rawVal, 1.012));
+        ci = harmVal * 0.051;
+        formula = 'N_MODIS = F_MOD^-1(F_VIIRS(N_VIIRS))';
+      }
+    } else {
+      // MODIS to VIIRS equivalent
+      if (m === 'ols') {
+        harmVal = (rawVal + 24.18) / 0.3298;
+        ci = harmVal * 0.065;
+      } else if (m === 'theil_sen') {
+        harmVal = (rawVal + 18.42) / 0.3185;
+        ci = harmVal * 0.052;
+      } else {
+        harmVal = rawVal * 3.12;
+        ci = harmVal * 0.07;
+      }
     }
 
-    divider.addEventListener('mousedown', (e) => {
-      isDragging = true;
-      e.preventDefault();
-    });
-    window.addEventListener('mousemove', (e) => {
-      if (isDragging) setSplitPosition(e.clientX);
-    });
-    window.addEventListener('mouseup', () => {
-      isDragging = false;
-    });
+    const resEl = document.getElementById('calc-result-val');
+    const ciEl = document.getElementById('calc-result-ci');
+    if (resEl) resEl.textContent = harmVal.toFixed(1) + ' events';
+    if (ciEl) {
+      const delta = (harmVal - rawVal).toFixed(1);
+      const deltaPct = (((harmVal - rawVal) / Math.max(1, rawVal)) * 100).toFixed(1);
+      ciEl.innerHTML = `&plusmn; ${ci.toFixed(1)} events (95% CI) &bull; Reconciled Bias: <strong>${delta} events (${deltaPct}%)</strong>`;
+    }
+  }
 
-    sliderBox.addEventListener('click', (e) => {
-      setSplitPosition(e.clientX);
+  if (sliderCalc && numCalc) {
+    sliderCalc.addEventListener('input', () => {
+      numCalc.value = sliderCalc.value;
+      calculateLiveHarmonization();
+    });
+    numCalc.addEventListener('input', () => {
+      sliderCalc.value = numCalc.value;
+      calculateLiveHarmonization();
     });
   }
 
-  // Auto-Sweep Demo button
-  const autoSweepBtn = document.getElementById('btn-sim-auto-sweep');
-  let autoSweepTimer = null;
-  let autoSweepAngle = 0;
-  if (autoSweepBtn && modisClip && divider) {
-    autoSweepBtn.addEventListener('click', () => {
-      audioFX.click();
-      if (autoSweepTimer) {
-        clearInterval(autoSweepTimer);
-        autoSweepTimer = null;
-        autoSweepBtn.classList.remove('active');
-        autoSweepBtn.textContent = '▶ Auto-Sweep Demo';
-      } else {
-        autoSweepBtn.classList.add('active');
-        autoSweepBtn.textContent = '⏸ Pause Auto-Sweep';
-        autoSweepTimer = setInterval(() => {
-          autoSweepAngle += 0.04;
-          const pct = 50 + 38 * Math.sin(autoSweepAngle);
-          modisClip.style.width = pct + '%';
-          divider.style.left = pct + '%';
-        }, 30);
-      }
-    });
-  }
-
-  // PSF and Sofiev filter buttons
-  const psfBtn = document.getElementById('btn-sim-psf-filter');
-  if (psfBtn) {
-    psfBtn.addEventListener('click', () => {
-      audioFX.click();
-      psfBtn.classList.toggle('active');
-      const isActive = psfBtn.classList.contains('active');
-      showToast(isActive ? 'PSF Convolution Filter Enabled (Gaussian 375m -> 1km)' : 'PSF Filter Disabled', 'info');
-    });
-  }
-
-  const sofievBtn = document.getElementById('btn-sim-sofiev-filter');
-  if (sofievBtn) {
-    sofievBtn.addEventListener('click', () => {
-      audioFX.click();
-      sofievBtn.classList.toggle('active');
-      const isActive = sofievBtn.classList.contains('active');
-      showToast(isActive ? 'Sofiev Truncation Applied (FRP >= 3.7 MW threshold)' : 'Full Sensitivity Active', 'info');
-    });
-  }
-
-  // Draw simulated resolution grids on canvases
-  drawOpticalSimulatorCanvases();
+  // Initial calculation & chart
+  calculateLiveHarmonization();
+  initOpticalSimulator();
+  renderCliffReconcilerChart();
+  initDozierInverter();
 }
 
-function drawOpticalSimulatorCanvases() {
-  const cViirs = document.getElementById('canvas-sim-viirs');
-  const cModis = document.getElementById('canvas-sim-modis');
-  if (cViirs && cViirs.getContext) {
-    const ctx = cViirs.getContext('2d');
-    ctx.fillStyle = '#070d18';
-    ctx.fillRect(0, 0, 1200, 400);
+// ==========================================================================
+// MODULE 4: BI-SPECTRAL SUB-PIXEL TEMPERATURE INVERTER (DOZIER 1981 / WOOSTER)
+// ==========================================================================
+function initDozierInverter() {
+  const sTb = document.getElementById('slider-dozier-tb');
+  const sTf = document.getElementById('slider-dozier-tf');
+  const sFrp = document.getElementById('slider-dozier-frp');
 
-    // Fine 375m subpixel grid
-    ctx.strokeStyle = 'rgba(56, 189, 248, 0.12)';
-    ctx.lineWidth = 1;
-    for (let x = 0; x < 1200; x += 30) {
-      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, 400); ctx.stroke();
-    }
-    for (let y = 0; y < 400; y += 30) {
-      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(1200, y); ctx.stroke();
-    }
+  const vTb = document.getElementById('val-dozier-tb');
+  const vTf = document.getElementById('val-dozier-tf');
+  const vFrp = document.getElementById('val-dozier-frp');
 
-    // VIIRS subpixel flaming fire nodes
-    const firePoints = [
-      [140, 180, 8, '#f97316'], [160, 210, 12, '#ef4444'], [180, 190, 6, '#facc15'],
-      [420, 120, 14, '#ef4444'], [440, 150, 10, '#f97316'], [460, 130, 8, '#facc15'],
-      [750, 250, 16, '#ef4444'], [780, 270, 9, '#f97316'], [810, 240, 11, '#facc15'],
-      [950, 160, 13, '#ef4444'], [980, 180, 7, '#f97316']
-    ];
-    firePoints.forEach(([x, y, r, col]) => {
-      ctx.fillStyle = col;
-      ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
-    });
+  const resP = document.getElementById('res-dozier-p');
+  const resAf = document.getElementById('res-dozier-af');
+  const resAmp = document.getElementById('res-dozier-amp');
+  const resRate = document.getElementById('res-dozier-rate');
+
+  if (!sTb || !sTf || !sFrp) return;
+
+  function updateDozier() {
+    const Tb = parseFloat(sTb.value);
+    const Tf = parseFloat(sTf.value);
+    const FRP_MW = parseFloat(sFrp.value);
+
+    if (vTb) vTb.textContent = `${Tb} K (${(Tb - 273.15).toFixed(0)}°C)`;
+    if (vTf) vTf.textContent = `${Tf} K (${(Tf - 273.15).toFixed(0)}°C)`;
+    if (vFrp) vFrp.textContent = `${FRP_MW.toFixed(1)} MW`;
+
+    // Stefan-Boltzmann constant: 5.670374e-8 W/(m^2 K^4)
+    const SIGMA = 5.670374e-8;
+    const EMISSIVITY = 0.95;
+
+    // Total emitted radiant flux per m^2 of flaming fire: E_f = SIGMA * epsilon * Tf^4 (W/m^2)
+    const fluxPerM2 = SIGMA * EMISSIVITY * Math.pow(Tf, 4);
+
+    // Radiative energy in Watts: FRP_W = FRP_MW * 1e6
+    const FRP_W = FRP_MW * 1e6;
+
+    // True flaming surface area in m^2: A_f = FRP_W / fluxPerM2
+    const Af_m2 = FRP_W / fluxPerM2;
+
+    // MODIS 1km pixel footprint: 1,000,000 m^2
+    const p_modis = (Af_m2 / 1000000) * 100;
+    // VIIRS 375m pixel footprint: 140,625 m^2
+    const p_viirs = (Af_m2 / 140625) * 100;
+
+    // Planck MIR (3.9um) radiance amplification factor: ~ (Tf / Tb)^4 * p
+    const ampRatio = (Math.pow(Tf / Tb, 4) * (p_modis / 100) + 1).toFixed(1);
+
+    // Wooster biomass consumption rate: 0.368 kg/MJ * FRP_MW (kg/s)
+    const burnRate = (0.368 * FRP_MW).toFixed(2);
+
+    if (resP) resP.textContent = `${p_modis.toFixed(4)}% of MODIS pixel (${p_viirs.toFixed(3)}% of VIIRS pixel)`;
+    if (resAf) resAf.textContent = `${Af_m2.toFixed(1)} m² (${(Af_m2 / 10000).toFixed(4)} ha)`;
+    if (resAmp) resAmp.textContent = `${ampRatio}× above ambient radiance`;
+    if (resRate) resRate.textContent = `${burnRate} kg/s biomass combusted (${(burnRate * 3.6).toFixed(1)} tonnes/hr)`;
   }
 
-  if (cModis && cModis.getContext) {
-    const ctx = cModis.getContext('2d');
-    ctx.fillStyle = '#070d18';
-    ctx.fillRect(0, 0, 1200, 400);
+  [sTb, sTf, sFrp].forEach(slider => {
+    slider.addEventListener('input', updateDozier);
+  });
 
-    // Coarse 1,000m pixel grid
-    ctx.strokeStyle = 'rgba(239, 68, 68, 0.25)';
-    ctx.lineWidth = 1.5;
-    for (let x = 0; x < 1200; x += 110) {
-      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, 400); ctx.stroke();
-    }
-    for (let y = 0; y < 400; y += 110) {
-      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(1200, y); ctx.stroke();
-    }
-
-    // Coarse integrated 1km blurred thermal centroids
-    const modisClusters = [[160, 190, 45], [440, 135, 40], [780, 255, 48], [965, 170, 38]];
-    modisClusters.forEach(([x, y, r]) => {
-      const grad = ctx.createRadialGradient(x, y, 4, x, y, r);
-      grad.addColorStop(0, 'rgba(239, 68, 68, 0.85)');
-      grad.addColorStop(0.6, 'rgba(249, 115, 22, 0.4)');
-      grad.addColorStop(1, 'rgba(249, 115, 22, 0)');
-      ctx.fillStyle = grad;
-      ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
-    });
-  }
+  updateDozier();
 }
 
 // ==========================================================================
