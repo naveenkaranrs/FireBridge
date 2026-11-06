@@ -444,6 +444,32 @@ body {
   flex-shrink: 0;
 }
 
+@media (max-width: 1400px) {
+  .model-badge-pill {
+    display: none;
+  }
+}
+
+@media (max-width: 1300px) {
+  .app-navbar {
+    height: auto;
+    max-height: none;
+    flex-wrap: wrap;
+    padding: 6px 14px;
+    gap: 6px;
+  }
+  .nav-container {
+    width: 100%;
+    justify-content: flex-start;
+  }
+  .navbar-biome-strip {
+    width: 100%;
+    justify-content: flex-start;
+    padding-top: 4px;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+  }
+}
+
 .biome-strip-label {
   font-family: var(--font-mono);
   font-size: 10px;
