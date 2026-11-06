@@ -2691,11 +2691,15 @@ function initBowTieWorkspace() {
   const modisBox = document.getElementById('box-modis-pixel');
   const viirsBox = document.getElementById('box-viirs-pixel');
   const modisMetric = document.getElementById('metric-modis-pixel');
+  const modisAreaMetric = document.getElementById('metric-modis-area');
   const viirsMetric = document.getElementById('metric-viirs-pixel');
+  const viirsAreaMetric = document.getElementById('metric-viirs-area');
+  const angleBadges = document.querySelectorAll('.vza-cur-angle');
 
   function updateBowTie(angle) {
     angle = parseInt(angle, 10);
     if (angleVal) angleVal.textContent = angle + '° VZA';
+    angleBadges.forEach(b => b.textContent = angle + '°');
 
     // MODIS pixel growth without aggregation: expands as sec(theta)^2 * sec(theta)
     const rad = (angle * Math.PI) / 180;
@@ -2704,12 +2708,16 @@ function initBowTieWorkspace() {
     const modisArea = (modisScanGrowth * modisTrackGrowth).toFixed(1);
 
     if (modisBox) {
-      const scaleX = Math.min(3.2, modisScanGrowth).toFixed(2);
-      const scaleY = Math.min(2.4, modisTrackGrowth).toFixed(2);
-      modisBox.style.transform = 'scale(' + scaleX + ', ' + scaleY + ')';
+      const baseW = 34;
+      const baseH = 34;
+      modisBox.style.width = Math.min(220, Math.round(baseW * modisScanGrowth)) + 'px';
+      modisBox.style.height = Math.min(80, Math.round(baseH * modisTrackGrowth)) + 'px';
     }
     if (modisMetric) {
-      modisMetric.textContent = 'At ' + angle + '°: Expands to ' + (1.0 * modisScanGrowth).toFixed(1) + ' km × ' + (1.0 * modisTrackGrowth).toFixed(1) + ' km (~' + modisArea + ' km² footprint)';
+      modisMetric.textContent = (1.0 * modisScanGrowth).toFixed(1) + ' km (scan) × ' + (1.0 * modisTrackGrowth).toFixed(1) + ' km (track)';
+    }
+    if (modisAreaMetric) {
+      modisAreaMetric.textContent = '~' + modisArea + ' km² (' + modisArea + '× nadir area)';
     }
 
     // VIIRS with 3-zone aggregation constrains growth
@@ -2718,12 +2726,16 @@ function initBowTieWorkspace() {
     const viirsArea = (0.14 * viirsScanGrowth * viirsTrackGrowth).toFixed(2);
 
     if (viirsBox) {
-      const scaleX = viirsScanGrowth.toFixed(2);
-      const scaleY = viirsTrackGrowth.toFixed(2);
-      viirsBox.style.transform = 'scale(' + scaleX + ', ' + scaleY + ')';
+      const baseW = 16;
+      const baseH = 16;
+      viirsBox.style.width = Math.min(60, Math.round(baseW * viirsScanGrowth)) + 'px';
+      viirsBox.style.height = Math.min(60, Math.round(baseH * viirsTrackGrowth)) + 'px';
     }
     if (viirsMetric) {
-      viirsMetric.textContent = 'At ' + angle + '°: Aggregation constrains growth to ' + (0.375 * viirsScanGrowth).toFixed(2) + ' km (~' + viirsArea + ' km² area)';
+      viirsMetric.textContent = (0.375 * viirsScanGrowth).toFixed(2) + ' km (scan) × ' + (0.375 * viirsTrackGrowth).toFixed(2) + ' km (track)';
+    }
+    if (viirsAreaMetric) {
+      viirsAreaMetric.textContent = '~' + viirsArea + ' km² (constrained by 3-to-1 aggregation)';
     }
   }
 
@@ -2732,24 +2744,6 @@ function initBowTieWorkspace() {
       updateBowTie(e.target.value);
     });
     updateBowTie(angleSlider.value);
-  }
-
-  // 3D Orbit action buttons
-  const pauseBtn = document.getElementById('btn-orbit-pause');
-  if (pauseBtn) {
-    pauseBtn.addEventListener('click', () => {
-      audioFX.click();
-      pauseBtn.classList.toggle('active');
-      pauseBtn.textContent = pauseBtn.classList.contains('active') ? '▶ Resume Orbits' : '❚❚ Pause Orbits';
-    });
-  }
-
-  const resetBtn = document.getElementById('btn-orbit-reset');
-  if (resetBtn) {
-    resetBtn.addEventListener('click', () => {
-      audioFX.click();
-      showToast('Camera reset to equatorial observation point', 'info');
-    });
   }
 }
 
@@ -3000,36 +2994,50 @@ function initJudgeGuidedTour() {
 // ==========================================================================
 // FEATURE: 3D ORBITAL SWATH & BOW-TIE VISUALIZER CONTROLLER
 // ==========================================================================
+// ==========================================================================
+// WORKSPACE 4: 3D REAL-WORLD MISSION ENVIRONMENT (THREE.JS + TEXTURES)
+// ==========================================================================
 let orbit3DState = {
   initialized: false,
   scene: null,
   camera: null,
   renderer: null,
-  globe: null,
-  atmosphere: null,
-  satellites: [],
+  controls: null,
+  earthGroup: null,
+  cloudsMesh: null,
+  starfieldMesh: null,
+  swathGroup: null,
+  fireMarkersGroup: null,
+  stationsGroup: null,
+  satellites: {},
+  swathCones: [],
+  cameraMode: 'free',
   isRotating: true,
+  cinematicAngle: 0,
   animId: null
 };
 
 function initOrbit3DVisualizer() {
-  const container = document.getElementById('orbit3d-canvas-container');
+  const container = document.getElementById('orbit3d-container') || document.getElementById('orbit3d-canvas-container');
   const canvas = document.getElementById('orbit3d-canvas');
   if (!container || !canvas) return;
 
-  initBowTieSlider();
+  initBowTieWorkspace();
 
   if (orbit3DState.initialized) {
     if (orbit3DState.renderer && container) {
-      orbit3DState.renderer.setSize(container.clientWidth, container.clientHeight);
-      orbit3DState.camera.aspect = container.clientWidth / container.clientHeight;
+      const w = container.clientWidth || 800;
+      const h = container.clientHeight || 520;
+      orbit3DState.renderer.setSize(w, h);
+      orbit3DState.camera.aspect = w / h;
       orbit3DState.camera.updateProjectionMatrix();
     }
     return;
   }
 
   if (typeof THREE === 'undefined') {
-    console.warn('[!] Three.js not loaded, fallback mode active.');
+    console.warn('[!] Three.js not loaded yet, retrying in 300ms...');
+    setTimeout(initOrbit3DVisualizer, 300);
     return;
   }
 
@@ -3038,226 +3046,439 @@ function initOrbit3DVisualizer() {
 
   // 1. Scene & Camera
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
-  camera.position.set(0, 4, 16);
+  const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 5000);
+  camera.position.set(0, 8, 28);
 
   // 2. WebGL Renderer
-  const renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true });
+  const renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true, powerPreference: 'high-performance' });
   renderer.setSize(width, height);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  if (THREE.ACESFilmicToneMapping) {
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.25;
+  }
 
-  // 3. Lighting
-  const ambientLight = new THREE.AmbientLight(0x223355, 1.2);
-  scene.add(ambientLight);
-  const sunLight = new THREE.DirectionalLight(0xffffff, 2.0);
-  sunLight.position.set(20, 10, 20);
+  // 3. OrbitControls
+  let controls = null;
+  if (typeof THREE.OrbitControls === 'function') {
+    controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.minDistance = 7.5;
+    controls.maxDistance = 80;
+    controls.rotateSpeed = 0.8;
+  }
+
+  // 4. Lighting (Directional Sun + Space Ambient)
+  const sunLight = new THREE.DirectionalLight(0xffffff, 2.5);
+  sunLight.position.set(60, 30, 45);
   scene.add(sunLight);
 
-  // 4. Procedural Textured Earth Globe
-  const globeGeo = new THREE.SphereGeometry(5, 64, 64);
-  
-  const textureCanvas = document.createElement('canvas');
-  textureCanvas.width = 1024;
-  textureCanvas.height = 512;
-  const ctx = textureCanvas.getContext('2d');
-  
-  // Ocean base
-  ctx.fillStyle = '#061325';
-  ctx.fillRect(0, 0, 1024, 512);
-  
-  // Continents simulation
-  ctx.fillStyle = '#1e3a2b';
-  // Americas
-  ctx.beginPath();
-  ctx.ellipse(280, 180, 100, 70, 0.2, 0, Math.PI * 2);
-  ctx.ellipse(320, 320, 60, 110, -0.2, 0, Math.PI * 2);
-  // Eurasia & Africa
-  ctx.ellipse(600, 160, 140, 80, -0.1, 0, Math.PI * 2);
-  ctx.ellipse(580, 280, 70, 90, 0.1, 0, Math.PI * 2);
-  // Australia
-  ctx.ellipse(820, 340, 50, 40, 0, 0, Math.PI * 2);
-  ctx.fill();
+  const spaceAmbient = new THREE.AmbientLight(0x0a1428, 0.7);
+  scene.add(spaceAmbient);
 
-  // Coastlines
-  ctx.strokeStyle = '#38bdf8';
-  ctx.lineWidth = 1.5;
-  ctx.stroke();
-
-  // Active fire hotspots on the globe
-  ctx.fillStyle = '#f97316';
-  const fireCoords = [
-    [260, 160], [270, 175], [330, 310], [340, 325],
-    [580, 260], [600, 290], [620, 140], [820, 350]
-  ];
-  fireCoords.forEach(([fx, fy]) => {
-    ctx.beginPath();
-    ctx.arc(fx, fy, 4, 0, Math.PI * 2);
-    ctx.fill();
+  // 5. Starfield & Space Environment
+  const starGeo = new THREE.SphereGeometry(600, 32, 32);
+  const textureLoader = new THREE.TextureLoader();
+  const starTex = textureLoader.load('textures/starfield.png');
+  const starMat = new THREE.MeshBasicMaterial({
+    map: starTex,
+    side: THREE.BackSide,
+    transparent: true,
+    opacity: 0.85
   });
+  const starfieldMesh = new THREE.Mesh(starGeo, starMat);
+  scene.add(starfieldMesh);
 
-  const earthTex = new THREE.CanvasTexture(textureCanvas);
-  const globeMat = new THREE.MeshPhongMaterial({
+  // Twinkling Star Particles
+  const starCount = 800;
+  const starParticleGeo = new THREE.BufferGeometry();
+  const starPositions = new Float32Array(starCount * 3);
+  for (let i = 0; i < starCount * 3; i += 3) {
+    const theta = Math.random() * Math.PI * 2;
+    const phi = Math.acos(Math.random() * 2 - 1);
+    const r = 500.0;
+    starPositions[i] = r * Math.sin(phi) * Math.cos(theta);
+    starPositions[i + 1] = r * Math.sin(phi) * Math.sin(theta);
+    starPositions[i + 2] = r * Math.cos(phi);
+  }
+  starParticleGeo.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
+  const starParticleMat = new THREE.PointsMaterial({ color: 0x38bdf8, size: 2.2, transparent: true, opacity: 0.85 });
+  const stars = new THREE.Points(starParticleGeo, starParticleMat);
+  scene.add(stars);
+
+  // 6. Real-World Earth Globe
+  const earthRadius = 5.0;
+  const earthGroup = new THREE.Group();
+  scene.add(earthGroup);
+
+  const earthTex = textureLoader.load('textures/earth_day.jpg');
+  const earthSpec = textureLoader.load('textures/earth_specular.jpg');
+
+  const earthGeo = new THREE.SphereGeometry(earthRadius, 64, 64);
+  const earthMat = new THREE.MeshStandardMaterial({
     map: earthTex,
-    specular: new THREE.Color(0x334466),
-    shininess: 15
+    roughness: 0.85,
+    metalness: 0.1,
+    roughnessMap: earthSpec
   });
-  const globe = new THREE.Mesh(globeGeo, globeMat);
-  scene.add(globe);
+  const earthMesh = new THREE.Mesh(earthGeo, earthMat);
+  earthGroup.add(earthMesh);
 
-  // Atmosphere Glow
-  const atmosGeo = new THREE.SphereGeometry(5.3, 32, 32);
+  // Dynamic Atmospheric Cloud Layer
+  const cloudTex = textureLoader.load('textures/earth_clouds.png');
+  const cloudGeo = new THREE.SphereGeometry(earthRadius * 1.015, 64, 64);
+  const cloudMat = new THREE.MeshStandardMaterial({
+    map: cloudTex,
+    transparent: true,
+    opacity: 0.45,
+    blending: THREE.AdditiveBlending
+  });
+  const cloudsMesh = new THREE.Mesh(cloudGeo, cloudMat);
+  earthGroup.add(cloudsMesh);
+
+  // Atmosphere Cyan Glow Shell
+  const atmosGeo = new THREE.SphereGeometry(earthRadius * 1.035, 48, 48);
   const atmosMat = new THREE.MeshBasicMaterial({
     color: 0x38bdf8,
     transparent: true,
-    opacity: 0.12,
+    opacity: 0.15,
     side: THREE.BackSide
   });
-  const atmosphere = new THREE.Mesh(atmosGeo, atmosMat);
-  scene.add(atmosphere);
+  const atmosphereMesh = new THREE.Mesh(atmosGeo, atmosMat);
+  earthGroup.add(atmosphereMesh);
 
-  // 5. Orbital Trajectories & Spacecraft
-  // MODIS Orbit (705 km -> radius 6.2)
-  const modisOrbitGeo = new THREE.RingGeometry(6.18, 6.22, 64);
-  const modisOrbitMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8, side: THREE.DoubleSide, transparent: true, opacity: 0.35 });
-  const modisOrbit = new THREE.Mesh(modisOrbitGeo, modisOrbitMat);
-  modisOrbit.rotation.x = Math.PI / 2 + 0.14;
-  scene.add(modisOrbit);
-
-  // VIIRS Orbit (824 km -> radius 6.6)
-  const viirsOrbitGeo = new THREE.RingGeometry(6.58, 6.62, 64);
-  const viirsOrbitMat = new THREE.MeshBasicMaterial({ color: 0xf97316, side: THREE.DoubleSide, transparent: true, opacity: 0.4 });
-  const viirsOrbit = new THREE.Mesh(viirsOrbitGeo, viirsOrbitMat);
-  viirsOrbit.rotation.x = Math.PI / 2 + 0.15;
-  scene.add(viirsOrbit);
-
-  function createSatMesh(color) {
-    const group = new THREE.Group();
-    const body = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.2, 0.25), new THREE.MeshLambertMaterial({ color: 0xdddddd }));
-    const panelL = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.02, 0.25), new THREE.MeshLambertMaterial({ color: 0x1e3a8a }));
-    panelL.position.x = -0.5;
-    const panelR = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.02, 0.25), new THREE.MeshLambertMaterial({ color: 0x1e3a8a }));
-    panelR.position.x = 0.5;
-    const beacon = new THREE.Mesh(new THREE.SphereGeometry(0.08, 16, 16), new THREE.MeshBasicMaterial({ color: color }));
-    beacon.position.y = 0.12;
-    group.add(body);
-    group.add(panelL);
-    group.add(panelR);
-    group.add(beacon);
-    return group;
+  // Helper: Convert Lat/Lon to 3D Cartesian coordinates
+  function latLonToVec3(lat, lon, r) {
+    const phi = (90 - lat) * (Math.PI / 180);
+    const theta = (lon + 180) * (Math.PI / 180);
+    const x = -(r * Math.sin(phi) * Math.cos(theta));
+    const z = (r * Math.sin(phi) * Math.sin(theta));
+    const y = (r * Math.cos(phi));
+    return new THREE.Vector3(x, y, z);
   }
 
-  const satTerra = createSatMesh(0x38bdf8);
-  const satAqua = createSatMesh(0x38bdf8);
-  const satNoaa20 = createSatMesh(0xf97316);
-  scene.add(satTerra);
-  scene.add(satAqua);
-  scene.add(satNoaa20);
+  // 7. Real NASA Active Fire Clusters Glowing in 3D
+  const fireMarkersGroup = new THREE.Group();
+  earthGroup.add(fireMarkersGroup);
+  const fireBiomes = [
+    { name: 'California', lat: 39.2, lon: -121.7, color: 0xef4444 },
+    { name: 'Amazon Arc', lat: -9.5, lon: -55.0, color: 0xf97316 },
+    { name: 'SE Australia', lat: -36.0, lon: 148.5, color: 0xf97316 },
+    { name: 'Boreal Siberia', lat: 62.0, lon: 126.0, color: 0xef4444 },
+    { name: 'Mediterranean', lat: 40.5, lon: 14.5, color: 0xf59e0b },
+    { name: 'Pantanal', lat: -17.5, lon: -56.5, color: 0xf97316 }
+  ];
+  const shockwaveRings = [];
+  fireBiomes.forEach(fb => {
+    const pos = latLonToVec3(fb.lat, fb.lon, earthRadius + 0.05);
+    // Core fire beacon
+    const beaconGeo = new THREE.SphereGeometry(0.08, 16, 16);
+    const beaconMat = new THREE.MeshBasicMaterial({ color: fb.color });
+    const beacon = new THREE.Mesh(beaconGeo, beaconMat);
+    beacon.position.copy(pos);
+    fireMarkersGroup.add(beacon);
 
-  // Conical Swath Lines
-  const swathMat = new THREE.LineBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.35 });
-  const swathGeo = new THREE.BufferGeometry().setFromPoints([
-    new THREE.Vector3(0, 0, 0),
-    new THREE.Vector3(-1.2, -1.8, 0),
-    new THREE.Vector3(1.2, -1.8, 0),
-    new THREE.Vector3(0, 0, 0)
-  ]);
-  const swathCone = new THREE.Line(swathGeo, swathMat);
-  satTerra.add(swathCone);
+    // Shockwave ring
+    const ringGeo = new THREE.RingGeometry(0.08, 0.22, 16);
+    const ringMat = new THREE.MeshBasicMaterial({ color: fb.color, side: THREE.DoubleSide, transparent: true, opacity: 0.6 });
+    const ring = new THREE.Mesh(ringGeo, ringMat);
+    ring.position.copy(pos);
+    ring.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), pos.clone().normalize());
+    fireMarkersGroup.add(ring);
+    shockwaveRings.push(ring);
+  });
 
+  // 8. NASA Ground Station Network Pins
+  const stationsGroup = new THREE.Group();
+  earthGroup.add(stationsGroup);
+  const groundStations = [
+    { name: 'White Sands (WSC)', lat: 32.5, lon: -106.6, primary: true },
+    { name: 'Svalbard (SGS)', lat: 78.2, lon: 15.4, primary: false },
+    { name: 'McMurdo (MGS)', lat: -77.8, lon: 166.7, primary: false },
+    { name: 'ISTRAC Bengaluru', lat: 12.97, lon: 77.59, primary: true }
+  ];
+  groundStations.forEach(stn => {
+    const pos = latLonToVec3(stn.lat, stn.lon, earthRadius + 0.02);
+    const pinGeo = new THREE.CylinderGeometry(0.03, 0.01, 0.25, 8);
+    const pinMat = new THREE.MeshBasicMaterial({ color: stn.primary ? 0x22c55e : 0x38bdf8 });
+    const pin = new THREE.Mesh(pinGeo, pinMat);
+    pin.position.copy(pos);
+    pin.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), pos.clone().normalize());
+    stationsGroup.add(pin);
+  });
+
+  // 9. NASA Satellite Constellation & 3D Optical Swath Cones
+  const swathGroup = new THREE.Group();
+  scene.add(swathGroup);
+
+  function create3DSpacecraft(name, color, isViirs) {
+    const group = new THREE.Group();
+    // Satellite Chassis
+    const busGeo = new THREE.BoxGeometry(0.35, 0.22, 0.25);
+    const busMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.3, metalness: 0.8 });
+    const bus = new THREE.Mesh(busGeo, busMat);
+    group.add(bus);
+
+    // Solar Arrays (Gold/Blue Mylar)
+    const panelGeo = new THREE.BoxGeometry(0.65, 0.26, 0.02);
+    const panelMat = new THREE.MeshStandardMaterial({ color: 0x0055ff, roughness: 0.2, metalness: 0.9 });
+    const pL = new THREE.Mesh(panelGeo, panelMat);
+    pL.position.x = -0.52;
+    const pR = new THREE.Mesh(panelGeo, panelMat);
+    pR.position.x = 0.52;
+    group.add(pL);
+    group.add(pR);
+
+    // Beacon
+    const beacon = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 8), new THREE.MeshBasicMaterial({ color: color }));
+    beacon.position.y = 0.14;
+    group.add(beacon);
+
+    // Conical Scan Swath Cone
+    const coneRadius = isViirs ? 1.55 : 1.18; // 3,060 km vs 2,330 km
+    const coneHeight = isViirs ? 2.2 : 1.8;
+    const coneGeo = new THREE.ConeGeometry(coneRadius, coneHeight, 16, 1, true);
+    const coneMat = new THREE.MeshBasicMaterial({
+      color: color,
+      transparent: true,
+      opacity: 0.22,
+      side: THREE.DoubleSide,
+      wireframe: true
+    });
+    const cone = new THREE.Mesh(coneGeo, coneMat);
+    cone.position.y = -coneHeight / 2;
+    cone.rotation.x = Math.PI;
+    group.add(cone);
+
+    // Nadir Laser Line
+    const nadirGeo = new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(0, 0, 0),
+      new THREE.Vector3(0, -coneHeight, 0)
+    ]);
+    const nadirMat = new THREE.LineBasicMaterial({ color: color, transparent: true, opacity: 0.55 });
+    const nadir = new THREE.Line(nadirGeo, nadirMat);
+    group.add(nadir);
+
+    return { group, cone, color, isViirs };
+  }
+
+  // 3D Orbit Ellipse Ribbons
+  function createOrbitRibbon(radius, inclinationDeg, color) {
+    const incRad = inclinationDeg * Math.PI / 180.0;
+    const pts = [];
+    const segs = 128;
+    for (let i = 0; i <= segs; i++) {
+      const theta = (i / segs) * Math.PI * 2;
+      const x = radius * Math.cos(theta);
+      const y = radius * Math.sin(theta) * Math.sin(incRad);
+      const z = radius * Math.sin(theta) * Math.cos(incRad);
+      pts.push(new THREE.Vector3(x, y, z));
+    }
+    const geo = new THREE.BufferGeometry().setFromPoints(pts);
+    const mat = new THREE.LineBasicMaterial({ color: color, transparent: true, opacity: 0.45 });
+    return new THREE.Line(geo, mat);
+  }
+
+  // Spacecraft Specs:
+  // MODIS: 705 km -> r = 5.55
+  // VIIRS: 824 km -> r = 5.65
+  const terraSat = create3DSpacecraft('Terra', 0x38bdf8, false);
+  const aquaSat = create3DSpacecraft('Aqua', 0x38bdf8, false);
+  const snppSat = create3DSpacecraft('Suomi-NPP', 0xf97316, true);
+  const noaa20Sat = create3DSpacecraft('NOAA-20', 0xf97316, true);
+
+  scene.add(terraSat.group);
+  scene.add(aquaSat.group);
+  scene.add(snppSat.group);
+  scene.add(noaa20Sat.group);
+
+  const modisOrbitRibbon = createOrbitRibbon(5.55, 98.2, 0x38bdf8);
+  const viirsOrbitRibbon = createOrbitRibbon(5.65, 98.7, 0xf97316);
+  scene.add(modisOrbitRibbon);
+  scene.add(viirsOrbitRibbon);
+
+  // Store globally
   orbit3DState = {
     initialized: true,
     scene,
     camera,
     renderer,
-    globe,
-    atmosphere,
-    satellites: [satTerra, satAqua, satNoaa20],
+    controls,
+    earthGroup,
+    cloudsMesh,
+    starfieldMesh,
+    swathGroup,
+    fireMarkersGroup,
+    stationsGroup,
+    satellites: { terra: terraSat, aqua: aquaSat, snpp: snppSat, noaa20: noaa20Sat },
+    swathCones: [terraSat.cone, aquaSat.cone, snppSat.cone, noaa20Sat.cone],
+    cameraMode: 'free',
     isRotating: true,
+    cinematicAngle: 0,
     animId: null
   };
 
-  // 6. Interactive Drag & Controls
-  let isDragging = false;
-  let prevMousePos = { x: 0, y: 0 };
-
-  canvas.addEventListener('mousedown', (e) => {
-    isDragging = true;
-    prevMousePos = { x: e.clientX, y: e.clientY };
-  });
-
-  window.addEventListener('mouseup', () => { isDragging = false; });
-
-  canvas.addEventListener('mousemove', (e) => {
-    if (!isDragging) return;
-    const deltaX = e.clientX - prevMousePos.x;
-    const deltaY = e.clientY - prevMousePos.y;
-    globe.rotation.y += deltaX * 0.006;
-    globe.rotation.x += deltaY * 0.006;
-    prevMousePos = { x: e.clientX, y: e.clientY };
-  });
-
-  canvas.addEventListener('wheel', (e) => {
-    e.preventDefault();
-    camera.position.z = Math.max(9, Math.min(28, camera.position.z + e.deltaY * 0.015));
-  }, { passive: false });
-
-  // Rotate toggle button
-  const rotateBtn = document.getElementById('btn-orbit3d-toggle-rotate');
-  if (rotateBtn) {
-    rotateBtn.addEventListener('click', () => {
-      audioFX.click();
-      orbit3DState.isRotating = !orbit3DState.isRotating;
-      rotateBtn.textContent = orbit3DState.isRotating ? '⏸ Pause Rotation' : '▶ Resume Rotation';
-    });
-  }
-
-  // Reset Camera button
-  const resetBtn = document.getElementById('btn-orbit3d-reset-cam');
-  if (resetBtn) {
-    resetBtn.addEventListener('click', () => {
-      audioFX.click();
-      camera.position.set(0, 4, 16);
-      globe.rotation.set(0, 0, 0);
-    });
-  }
-
-  // Focus buttons
-  const focusGroup = document.getElementById('orbit3d-satellite-focus');
-  if (focusGroup) {
-    focusGroup.addEventListener('click', (e) => {
+  // 10. Wire Camera Modes & Toggles
+  const camModeGroup = document.getElementById('orbit-cam-mode');
+  if (camModeGroup) {
+    camModeGroup.addEventListener('click', (e) => {
       const btn = e.target.closest('.seg-btn');
       if (!btn) return;
       audioFX.click();
-      focusGroup.querySelectorAll('.seg-btn').forEach(b => b.classList.remove('active'));
+      camModeGroup.querySelectorAll('.seg-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
-      const f = btn.dataset.focus;
-      if (f === 'all') camera.position.set(0, 4, 16);
-      else if (f === 'terra') camera.position.set(0, 6.2, 10);
-      else if (f === 'aqua') camera.position.set(0, -6.2, 10);
-      else if (f === 'viirs') camera.position.set(0, 6.6, 9.5);
+      orbit3DState.cameraMode = btn.dataset.cam;
+      if (controls) controls.enabled = (btn.dataset.cam === 'free');
+      if (btn.dataset.cam === 'free') {
+        camera.position.set(0, 8, 28);
+        if (controls) controls.target.set(0, 0, 0);
+      }
     });
   }
 
-  // 7. Render Loop
-  let orbitTime = 0;
+  const pauseBtn = document.getElementById('btn-orbit-pause');
+  if (pauseBtn) {
+    pauseBtn.addEventListener('click', () => {
+      audioFX.click();
+      orbit3DState.isRotating = !orbit3DState.isRotating;
+      pauseBtn.classList.toggle('active', !orbit3DState.isRotating);
+      pauseBtn.textContent = orbit3DState.isRotating ? '❚❚ Pause Spin' : '▶ Resume Spin';
+    });
+  }
+
+  const resetBtn = document.getElementById('btn-orbit-reset');
+  if (resetBtn) {
+    resetBtn.addEventListener('click', () => {
+      audioFX.click();
+      camera.position.set(0, 8, 28);
+      if (controls) {
+        controls.target.set(0, 0, 0);
+        controls.reset();
+      }
+      orbit3DState.cameraMode = 'free';
+      document.querySelectorAll('#orbit-cam-mode .seg-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.cam === 'free');
+      });
+      showToast('Camera reset to equatorial observation point', 'info');
+    });
+  }
+
+  const swathToggle = document.getElementById('btn-orbit-toggle-swath');
+  if (swathToggle) {
+    swathToggle.addEventListener('click', () => {
+      audioFX.click();
+      swathToggle.classList.toggle('active');
+      const visible = swathToggle.classList.contains('active');
+      orbit3DState.swathCones.forEach(c => c.visible = visible);
+      showToast(visible ? 'Conical sensor swaths enabled' : 'Conical sensor swaths hidden', 'info');
+    });
+  }
+
+  const cloudsToggle = document.getElementById('btn-orbit-toggle-clouds');
+  if (cloudsToggle) {
+    cloudsToggle.addEventListener('click', () => {
+      audioFX.click();
+      cloudsToggle.classList.toggle('active');
+      cloudsMesh.visible = cloudsToggle.classList.contains('active');
+      showToast(cloudsMesh.visible ? 'Atmosphere cloud layer enabled' : 'Cloud layer hidden', 'info');
+    });
+  }
+
+  const starsToggle = document.getElementById('btn-orbit-toggle-stars');
+  if (starsToggle) {
+    starsToggle.addEventListener('click', () => {
+      audioFX.click();
+      starsToggle.classList.toggle('active');
+      starfieldMesh.visible = starsToggle.classList.contains('active');
+      stars.visible = starsToggle.classList.contains('active');
+    });
+  }
+
+  // Handle Resize
+  window.addEventListener('resize', () => {
+    if (renderer && container) {
+      const w = container.clientWidth || 800;
+      const h = container.clientHeight || 520;
+      renderer.setSize(w, h);
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+    }
+  });
+
+  // 11. Animation Render Loop
+  let orbitClock = 0;
+  let shockwaveScale = 1.0;
   function animate() {
     orbit3DState.animId = requestAnimationFrame(animate);
-    orbitTime += 0.015;
+    orbitClock += 0.012;
 
-    satTerra.position.x = 6.2 * Math.cos(orbitTime);
-    satTerra.position.y = 6.2 * Math.sin(orbitTime);
-    satTerra.position.z = 0.8 * Math.sin(orbitTime);
+    // Earth axial rotation
+    if (orbit3DState.isRotating && orbit3DState.cameraMode !== 'track') {
+      earthGroup.rotation.y += 0.0016;
+      cloudsMesh.rotation.y += 0.0022; // clouds rotate slightly faster
+    }
 
-    satAqua.position.x = 6.2 * Math.cos(orbitTime + Math.PI);
-    satAqua.position.y = 6.2 * Math.sin(orbitTime + Math.PI);
-    satAqua.position.z = 0.8 * Math.sin(orbitTime + Math.PI);
+    // Pulse active fire shockwaves
+    shockwaveScale = 1.0 + 0.3 * Math.sin(orbitClock * 4);
+    shockwaveRings.forEach(r => r.scale.set(shockwaveScale, shockwaveScale, 1));
 
-    satNoaa20.position.x = 6.6 * Math.cos(orbitTime * 0.9 + 1.2);
-    satNoaa20.position.y = 6.6 * Math.sin(orbitTime * 0.9 + 1.2);
-    satNoaa20.position.z = 0.9 * Math.sin(orbitTime * 0.9 + 1.2);
+    // Propagate Satellites
+    // Terra: 705 km, 98.2°
+    const rM = 5.55;
+    const incM = 98.2 * Math.PI / 180;
+    terraSat.group.position.set(
+      rM * Math.cos(orbitClock),
+      rM * Math.sin(orbitClock) * Math.sin(incM),
+      rM * Math.sin(orbitClock) * Math.cos(incM)
+    );
+    // Aqua: 180° opposite
+    aquaSat.group.position.set(
+      rM * Math.cos(orbitClock + Math.PI),
+      rM * Math.sin(orbitClock + Math.PI) * Math.sin(incM),
+      rM * Math.sin(orbitClock + Math.PI) * Math.cos(incM)
+    );
 
-    if (orbit3DState.isRotating && !isDragging) {
-      globe.rotation.y += 0.002;
+    // VIIRS: 824 km, 98.7°
+    const rV = 5.65;
+    const incV = 98.7 * Math.PI / 180;
+    snppSat.group.position.set(
+      rV * Math.cos(orbitClock * 0.94 + 0.8),
+      rV * Math.sin(orbitClock * 0.94 + 0.8) * Math.sin(incV),
+      rV * Math.sin(orbitClock * 0.94 + 0.8) * Math.cos(incV)
+    );
+    noaa20Sat.group.position.set(
+      rV * Math.cos(orbitClock * 0.94 + 2.8),
+      rV * Math.sin(orbitClock * 0.94 + 2.8) * Math.sin(incV),
+      rV * Math.sin(orbitClock * 0.94 + 2.8) * Math.cos(incV)
+    );
+
+    // Point spacecraft towards velocity direction
+    [terraSat, aquaSat, snppSat, noaa20Sat].forEach(s => {
+      s.group.lookAt(0, 0, 0);
+    });
+
+    // Camera Modes
+    if (orbit3DState.cameraMode === 'terra') {
+      const pos = terraSat.group.position;
+      const camOffset = pos.clone().normalize().multiplyScalar(13);
+      camera.position.lerp(camOffset, 0.05);
+      if (controls) controls.target.lerp(pos, 0.05);
+    } else if (orbit3DState.cameraMode === 'viirs') {
+      const pos = snppSat.group.position;
+      const camOffset = pos.clone().normalize().multiplyScalar(13);
+      camera.position.lerp(camOffset, 0.05);
+      if (controls) controls.target.lerp(pos, 0.05);
+    } else if (orbit3DState.cameraMode === 'cinematic') {
+      orbit3DState.cinematicAngle += 0.003;
+      camera.position.x = 24 * Math.sin(orbit3DState.cinematicAngle);
+      camera.position.z = 24 * Math.cos(orbit3DState.cinematicAngle);
+      camera.position.y = 10 * Math.sin(orbit3DState.cinematicAngle * 0.5);
+      camera.lookAt(0, 0, 0);
+    }
+
+    if (controls && controls.enabled) {
+      controls.update();
     }
 
     renderer.render(scene, camera);

@@ -29,6 +29,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 </head>
 <body class="pro-edition">
 
@@ -640,47 +641,119 @@
           <div class="orbit3d-titles">
             <span class="panel-icon">&#127758;</span>
             <div>
-              <h2 class="view-title">3D Planetary Orbital Swath &amp; Bow-Tie Distortion Geometry</h2>
-              <p class="view-subtitle">Interactive WebGL Earth visualizer comparing 705 km (MODIS) vs 824 km (VIIRS) scan swaths and off-nadir pixel growth.</p>
+              <h2 class="view-title">3D Planetary Orbital Swath &amp; Constellation Mission Environment</h2>
+              <p class="view-subtitle">Interactive WebGL Earth visualizer comparing 705 km (MODIS) vs 824 km (VIIRS) scan swaths, real-world orbital mechanics, and scan edge bow-tie pixel growth.</p>
             </div>
           </div>
 
           <div class="orbit-view-controls">
-            <button class="btn btn-xs btn-secondary" id="btn-orbit-pause">❚❚ Pause Orbits</button>
-            <button class="btn btn-xs btn-secondary" id="btn-orbit-reset">↺ Reset Camera</button>
-            <button class="btn btn-xs btn-ghost active" id="btn-orbit-toggle-swath">Conical Swaths</button>
+            <div class="segmented-control xs" id="orbit-cam-mode">
+              <button class="seg-btn active" data-cam="free">🌐 Free Orbit</button>
+              <button class="seg-btn" data-cam="terra">🛰️ Track Terra (MODIS)</button>
+              <button class="seg-btn" data-cam="viirs">🛰️ Track VIIRS (375m)</button>
+              <button class="seg-btn" data-cam="cinematic">🎬 Cinematic Spin</button>
+            </div>
+            <button class="btn btn-xs btn-secondary" id="btn-orbit-pause">❚❚ Pause Spin</button>
+            <button class="btn btn-xs btn-secondary" id="btn-orbit-reset">↺ Reset View</button>
+            <button class="btn btn-xs btn-ghost active" id="btn-orbit-toggle-swath">Swaths</button>
+            <button class="btn btn-xs btn-ghost active" id="btn-orbit-toggle-clouds">Clouds</button>
             <button class="btn btn-xs btn-ghost active" id="btn-orbit-toggle-stars">Starfield</button>
           </div>
         </div>
 
         <div class="orbit3d-canvas-wrap" id="orbit3d-container">
           <canvas id="orbit3d-canvas"></canvas>
+
+          <!-- Top-Left Holographic Spacecraft Telemetry HUD Overlay (ASTRA-GDS style) -->
           <div class="orbit3d-hud-overlay">
-            <div class="orbit-badge terra">● Terra (MODIS) • 705 km • 98.2° Inclination • 2,330 km Swath</div>
-            <div class="orbit-badge viirs">● Suomi-NPP / NOAA (VIIRS) • 824 km • 3,060 km Wide Swath</div>
+            <div class="orbit-hud-chip" id="orbit-hud-terra">
+              <span class="hud-chip-dot modis"></span>
+              <div class="hud-chip-info">
+                <strong>Terra (MODIS 1km)</strong>
+                <span>705 km Alt • 98.2° Incl • 2,330 km Swath • 7.54 km/s</span>
+              </div>
+            </div>
+            <div class="orbit-hud-chip" id="orbit-hud-viirs">
+              <span class="hud-chip-dot viirs"></span>
+              <div class="hud-chip-info">
+                <strong>Suomi-NPP / NOAA-20 (VIIRS 375m)</strong>
+                <span>824 km Alt • 98.7° Incl • 3,060 km Swath • 7.48 km/s</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bottom Telemetry Metric Ticker -->
+          <div class="orbit3d-bottom-ticker">
+            <div class="ticker-item"><span class="t-lbl">Active Spacecraft:</span> <span class="t-val mono text-cyan">Terra (AM), Aqua (PM), S-NPP, NOAA-20/21</span></div>
+            <div class="ticker-item"><span class="t-lbl">Ground Network:</span> <span class="t-val mono text-green">White Sands • McMurdo • Svalbard • ISTRAC</span></div>
+            <div class="ticker-item"><span class="t-lbl">MODIS Swath:</span> <span class="t-val mono text-cyan">2,330 km (1km Nadir)</span></div>
+            <div class="ticker-item"><span class="t-lbl">VIIRS Swath:</span> <span class="t-val mono text-orange">3,060 km (375m I-Band)</span></div>
           </div>
         </div>
 
         <!-- Scan Angle Pixel Growth Diagram (Bow-Tie Distortion) -->
         <div class="bowtie-distortion-panel">
           <div class="bowtie-header">
-            <h4>Viewing Zenith Angle (VZA) &amp; Bow-Tie Effect Simulator:</h4>
+            <div>
+              <h4 class="bowtie-title">📐 Viewing Zenith Angle (VZA) &amp; Bow-Tie Effect Distortion Simulator</h4>
+              <p class="bowtie-desc">Observe geometric distortion across the scan swath: At swath edges (53°+), MODIS pixel footprint expands by ~4.8× along-scan and 2.4× along-track (~11.5 km² area), whereas VIIRS onboard 3-to-1 aggregation constrains growth to ≤ 0.8 km (~0.29 km² area).</p>
+            </div>
             <div class="angle-slider-wrap">
-              <span>Off-Nadir Scan Angle:</span>
+              <span class="slider-lbl">Off-Nadir Scan Angle:</span>
               <input type="range" id="slider-bowtie-angle" min="0" max="56" value="45" class="pro-slider-sm">
-              <span id="bowtie-angle-val" class="mono">45° VZA</span>
+              <span id="bowtie-angle-val" class="angle-badge mono">45° VZA</span>
             </div>
           </div>
-          <div class="bowtie-visual-row">
-            <div class="bowtie-col">
-              <strong>MODIS 1km Nadir:</strong>
-              <div class="pixel-box modis-box" id="box-modis-pixel">1.0 km × 1.0 km</div>
-              <span class="pixel-metric" id="metric-modis-pixel">At 45°: Expands to 2.4 km × 4.8 km (~11.5 km² footprint)</span>
+
+          <div class="bowtie-comparison-grid">
+            <!-- MODIS Distortion Card -->
+            <div class="bowtie-card modis-card">
+              <div class="bowtie-card-header">
+                <span class="sat-dot modis"></span>
+                <strong>MODIS 1km Footprint (Nadir: 1.0 km × 1.0 km)</strong>
+              </div>
+              <div class="pixel-box-stage">
+                <div class="pixel-box modis-box" id="box-modis-pixel"></div>
+              </div>
+              <div class="pixel-stats-card">
+                <div class="stat-line">
+                  <span class="stat-lbl">Dimensions at <span class="vza-cur-angle">45°</span>:</span>
+                  <span class="stat-val mono text-red" id="metric-modis-pixel">2.4 km (scan) × 4.8 km (track)</span>
+                </div>
+                <div class="stat-line">
+                  <span class="stat-lbl">Ground Pixel Area:</span>
+                  <span class="stat-val mono text-red" id="metric-modis-area">~11.5 km² footprint</span>
+                </div>
+                <div class="stat-line">
+                  <span class="stat-lbl">Bow-Tie Artifact:</span>
+                  <span class="stat-val text-red">High adjacent scan overlap &amp; distortion</span>
+                </div>
+              </div>
             </div>
-            <div class="bowtie-col">
-              <strong>VIIRS 375m Nadir:</strong>
-              <div class="pixel-box viirs-box" id="box-viirs-pixel">0.375 km × 0.375 km</div>
-              <span class="pixel-metric" id="metric-viirs-pixel">At 45°: Pixel aggregation constrains growth to ≤ 0.8 km</span>
+
+            <!-- VIIRS Distortion Card -->
+            <div class="bowtie-card viirs-card">
+              <div class="bowtie-card-header">
+                <span class="sat-dot viirs"></span>
+                <strong>VIIRS 375m Footprint (Nadir: 0.375 km × 0.375 km)</strong>
+              </div>
+              <div class="pixel-box-stage">
+                <div class="pixel-box viirs-box" id="box-viirs-pixel"></div>
+              </div>
+              <div class="pixel-stats-card">
+                <div class="stat-line">
+                  <span class="stat-lbl">Dimensions at <span class="vza-cur-angle">45°</span>:</span>
+                  <span class="stat-val mono text-cyan" id="metric-viirs-pixel">0.54 km (scan) × 0.54 km (track)</span>
+                </div>
+                <div class="stat-line">
+                  <span class="stat-lbl">Ground Pixel Area:</span>
+                  <span class="stat-val mono text-cyan" id="metric-viirs-area">~0.29 km² (3-to-1 aggregation)</span>
+                </div>
+                <div class="stat-line">
+                  <span class="stat-lbl">Bow-Tie Deletion:</span>
+                  <span class="stat-val text-cyan">Onboard duplicate pixel deletion active</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
