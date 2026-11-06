@@ -3962,3 +3962,296 @@ body {
 
 
 
+
+/* ==========================================================================
+   ENHANCED POLISHED WORKSPACE LAYOUTS & COMPONENT STYLES
+   ========================================================================== */
+
+/* Workspace 2: Models Grid Layout */
+.models-grid-layout {
+  display: grid;
+  grid-template-columns: 360px 1fr;
+  gap: 16px;
+  margin-top: 14px;
+}
+.model-selection-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.model-card {
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.model-card:hover {
+  border-color: #38bdf8;
+  background: rgba(56, 189, 248, 0.08);
+  transform: translateX(2px);
+}
+.model-card.active {
+  border-color: #38bdf8;
+  background: rgba(56, 189, 248, 0.15);
+  box-shadow: 0 0 15px rgba(56, 189, 248, 0.2);
+}
+.model-card .model-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #f8fafc;
+  margin-bottom: 4px;
+}
+.model-card .model-meta {
+  font-size: 11px;
+  color: #94a3b8;
+  font-family: 'JetBrains Mono', monospace;
+}
+.model-formula-card {
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  border-radius: var(--radius-sm);
+  padding: 14px;
+  margin-bottom: 14px;
+}
+.formula-title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #38bdf8;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.formula-math {
+  display: block;
+  background: rgba(7, 10, 18, 0.9);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  padding: 10px 14px;
+  border-radius: 4px;
+  font-size: 13px;
+  color: #38bdf8;
+  font-family: 'JetBrains Mono', monospace;
+  margin-bottom: 8px;
+}
+.formula-desc {
+  font-size: 12px;
+  color: #94a3b8;
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* Workspace 3: Climatology Grid & GWIS Matrix */
+.climatology-pheno-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 16px;
+}
+.pheno-metric-card {
+  padding: 14px 16px;
+}
+.pheno-metric-card .pm-title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #94a3b8;
+  font-weight: 600;
+}
+.pheno-metric-card .pm-value {
+  font-size: 20px;
+  font-weight: 800;
+  margin: 6px 0 2px;
+  color: #f8fafc;
+}
+.pheno-metric-card .pm-value.alert { color: #f97316; }
+.pheno-metric-card .pm-value.highlight { color: #38bdf8; }
+.pheno-metric-card .pm-sub {
+  font-size: 11px;
+  color: #64748b;
+}
+
+.hazard-tiers-matrix {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+  margin-top: 10px;
+}
+.hazard-tier {
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  border-top: 3px solid #64748b;
+}
+.hazard-tier.tier-1 { border-top-color: #22c55e; }
+.hazard-tier.tier-2 { border-top-color: #eab308; }
+.hazard-tier.tier-3 { border-top-color: #f97316; }
+.hazard-tier.tier-4 { border-top-color: #ef4444; }
+.hazard-tier.tier-5 { border-top-color: #ec4899; }
+.hazard-tier.active { box-shadow: 0 0 15px rgba(236, 72, 153, 0.25); }
+.hazard-tier .tier-badge { font-weight: 700; font-size: 12px; margin-bottom: 4px; }
+.hazard-tier .tier-range { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #38bdf8; margin-bottom: 6px; }
+.hazard-tier .tier-desc { font-size: 11px; color: #94a3b8; line-height: 1.4; }
+
+.climate-sim-body-grid {
+  display: grid;
+  grid-template-columns: 360px 1fr;
+  gap: 16px;
+  margin-top: 14px;
+}
+.climate-controls-column {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.climate-slider-item .cl-slider-hdr {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #cbd5e1;
+  margin-bottom: 4px;
+}
+.climate-slider-item .cl-val {
+  font-family: 'JetBrains Mono', monospace;
+  color: #f97316;
+  font-weight: 700;
+}
+
+/* Workspace 4: Bow-Tie Distortion Geometry */
+.bowtie-distortion-panel {
+  margin-top: 16px;
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-md);
+  padding: 16px;
+}
+.bowtie-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+}
+.bowtie-visual-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+.bowtie-col {
+  background: rgba(7, 10, 18, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-sm);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.pixel-box {
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  font-weight: 700;
+  transition: transform 0.2s ease;
+  transform-origin: left center;
+}
+.pixel-box.modis-box {
+  background: rgba(239, 68, 68, 0.25);
+  border: 1.5px solid #ef4444;
+  color: #fca5a5;
+  width: 140px;
+}
+.pixel-box.viirs-box {
+  background: rgba(56, 189, 248, 0.25);
+  border: 1.5px solid #38bdf8;
+  color: #bae6fd;
+  width: 60px;
+}
+.pixel-metric {
+  font-size: 11px;
+  color: #94a3b8;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* Workspace 5: 12-Stage Pipeline Flow & QA Benchmarks */
+.pipeline-flow-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-top: 14px;
+}
+.flow-stage {
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  position: relative;
+  transition: all 0.2s ease;
+}
+.flow-stage:hover {
+  border-color: #38bdf8;
+  background: rgba(56, 189, 248, 0.08);
+  transform: translateY(-2px);
+}
+.flow-stage .stage-num {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 16px;
+  font-weight: 800;
+  color: #38bdf8;
+  margin-bottom: 4px;
+  display: block;
+}
+.flow-stage .stage-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #f8fafc;
+  margin-bottom: 2px;
+}
+.flow-stage .stage-desc {
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+.qa-grid-layout {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-top: 14px;
+}
+.qa-metric-item {
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.qa-lbl {
+  font-size: 11px;
+  color: #94a3b8;
+}
+.qa-val {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px;
+  font-weight: 700;
+  color: #f8fafc;
+}
+.qa-val.highlight { color: #38bdf8; }
+.qa-pass {
+  display: inline-block;
+  align-self: flex-start;
+  font-size: 10px;
+  font-weight: 800;
+  color: #22c55e;
+  background: rgba(34, 197, 94, 0.15);
+  padding: 2px 8px;
+  border-radius: 4px;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  margin-top: 4px;
+}
