@@ -435,11 +435,10 @@ function initMap() {
   setTimeout(() => { if (state.map) state.map.invalidateSize(true); }, 800);
   window.addEventListener('resize', () => { if (state.map) state.map.invalidateSize(); });
 
-  // Basemap Tile Layers: Free CartoDB Dark Matter without API key & NASA GIBS WMTS
-  const darkTiles = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+  // Basemap Tile Layers: Free ESRI World Dark Gray Canvas (Watermark-free) & NASA GIBS WMTS
+  const darkTiles = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
     maxZoom: 18,
-    subdomains: 'abcd',
-    attribution: '&copy; CartoDB &copy; OpenStreetMap contributors'
+    attribution: '&copy; Esri &copy; OpenStreetMap contributors'
   });
 
   const satelliteTiles = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
@@ -452,7 +451,7 @@ function initMap() {
     attribution: '&copy; OpenStreetMap contributors'
   });
 
-  const gibsTiles = L.tileLayer('https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_SNPP_CorrectedReflectance_TrueColor/default/2026-10-28/GoogleMapsCompatible_Level9/{z}/{y}/{x}.jpg', {
+  const gibsTiles = L.tileLayer('https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_SNPP_CorrectedReflectance_TrueColor/default/2024-08-15/GoogleMapsCompatible_Level9/{z}/{y}/{x}.jpg', {
     maxNativeZoom: 9,
     maxZoom: 18,
     attribution: 'NASA GIBS Earthdata'
@@ -463,7 +462,7 @@ function initMap() {
     attribution: 'OpenTopoMap'
   });
 
-  const gibsThermalOverlay = L.tileLayer('https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_SNPP_Thermal_Anomalies_375m_All/default/2026-10-28/GoogleMapsCompatible_Level9/{z}/{y}/{x}.png', {
+  const gibsThermalOverlay = L.tileLayer('https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_SNPP_Thermal_Anomalies_375m_All/default/2024-08-15/GoogleMapsCompatible_Level9/{z}/{y}/{x}.png', {
     maxNativeZoom: 9,
     maxZoom: 18,
     transparent: true,
@@ -472,6 +471,7 @@ function initMap() {
   });
 
   state.mapLayers.tileLayer = darkTiles.addTo(state.map);
+  state.mapLayers.darkLayer = darkTiles;
   state.mapLayers.satelliteLayer = satelliteTiles;
   state.mapLayers.osmLayer = osmTiles;
   state.mapLayers.gibsLayer = gibsTiles;
@@ -1746,7 +1746,7 @@ function setupGlobalEvents() {
       else if (layer === 'osm') state.mapLayers.tileLayer = state.mapLayers.osmLayer.addTo(state.map);
       else if (layer === 'gibs') state.mapLayers.tileLayer = state.mapLayers.gibsLayer.addTo(state.map);
       else if (layer === 'terrain') state.mapLayers.tileLayer = state.mapLayers.terrainLayer.addTo(state.map);
-      else state.mapLayers.tileLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(state.map);
+      else state.mapLayers.tileLayer = state.mapLayers.darkLayer.addTo(state.map);
       state.map.invalidateSize();
     }
   });
