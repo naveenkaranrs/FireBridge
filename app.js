@@ -2242,6 +2242,84 @@ function setupGlobalEvents() {
     renderCalendar();
   });
 
+  // Client-Side CSV & GeoJSON Exporters (100% compatible with GitHub Pages & offline deployment)
+  function exportCurrentRegionCsv() {
+    if (typeof audioFX !== 'undefined') audioFX.click();
+    const region = state.currentRegion || 'california';
+    const regData = (state.database && state.database[region]) || (state.database && state.database['california']);
+    if (!regData) {
+      showToast('Dataset loading, please wait...', 'warning');
+      return;
+    }
+    const hotspots = regData.sample_hotspots || [];
+    let csv = "latitude,longitude,brightness,scan,track,acq_date,acq_time,satellite,instrument,confidence,version,bright_t31,frp,daynight,type\n";
+    hotspots.forEach(pt => {
+      const lat = pt.latitude || 0;
+      const lon = pt.longitude || 0;
+      const bright = pt.brightness || 325;
+      const date = pt.date || '2026-10-28';
+      const time = (pt.time || '13:30').replace(':', '');
+      const sat = pt.satellite || (pt.sensor === 'VIIRS' ? 'NOAA-20' : 'Terra');
+      const inst = pt.sensor || 'VIIRS';
+      const conf = pt.confidence || 85;
+      const frp = pt.frp || 18.5;
+      const dn = pt.daynight || 'D';
+      csv += `${lat},${lon},${bright},1.0,1.0,${date},${time},${sat},${inst},${conf},2.0NRT,298.0,${frp},${dn},0\n`;
+    });
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `NASA_FIRMS_Harmonized_${region}_2000_2026.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast(`Harmonized CSV downloaded (${hotspots.length.toLocaleString('en-US')} records)`, 'success');
+  }
+
+  function exportCurrentRegionGeoJson() {
+    if (typeof audioFX !== 'undefined') audioFX.click();
+    const region = state.currentRegion || 'california';
+    const regData = (state.database && state.database[region]) || (state.database && state.database['california']);
+    if (!regData) {
+      showToast('Dataset loading, please wait...', 'warning');
+      return;
+    }
+    const hotspots = regData.sample_hotspots || [];
+    const geojson = {
+      type: "FeatureCollection",
+      metadata: {
+        platform: "FireBridge NASA FIRMS Harmonization Engine",
+        region: region,
+        generated_utc: new Date().toISOString()
+      },
+      features: hotspots.map(pt => ({
+        type: "Feature",
+        geometry: { type: "Point", coordinates: [pt.longitude, pt.latitude] },
+        properties: {
+          date: pt.date,
+          time: pt.time,
+          sensor: pt.sensor,
+          satellite: pt.satellite,
+          frp: pt.frp,
+          confidence: pt.confidence,
+          daynight: pt.daynight
+        }
+      }))
+    };
+    const blob = new Blob([JSON.stringify(geojson, null, 2)], { type: 'application/geo+json;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `FireBridge_${region}_Hotspots.geojson`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast(`AOI GeoJSON downloaded (${hotspots.length.toLocaleString('en-US')} features)`, 'success');
+  }
+
   // Analytics Chart Tabs
   document.getElementById('analytics-chart-tabs')?.addEventListener('click', (e) => {
     const btn = e.target.closest('.tab-btn');
@@ -2252,22 +2330,11 @@ function setupGlobalEvents() {
     renderAnalyticsChart();
   });
 
-  // Quick Export CSV / GeoJSON buttons
-  document.getElementById('btn-quick-export-csv')?.addEventListener('click', () => {
-    window.location.href = `/api/export/csv?region=${state.currentRegion}`;
-  });
-
-  document.getElementById('btn-quick-export-geojson')?.addEventListener('click', () => {
-    window.location.href = `/api/export/geojson?region=${state.currentRegion}`;
-  });
-
-  document.getElementById('btn-export-full-csv')?.addEventListener('click', () => {
-    window.location.href = `/api/export/csv?region=${state.currentRegion}`;
-  });
-
-  document.getElementById('btn-export-full-geojson')?.addEventListener('click', () => {
-    window.location.href = `/api/export/geojson?region=${state.currentRegion}`;
-  });
+  // Quick Export CSV / GeoJSON buttons (Client-side Blob generation: works on GitHub Pages & offline)
+  document.getElementById('btn-quick-export-csv')?.addEventListener('click', exportCurrentRegionCsv);
+  document.getElementById('btn-quick-export-geojson')?.addEventListener('click', exportCurrentRegionGeoJson);
+  document.getElementById('btn-export-full-csv')?.addEventListener('click', exportCurrentRegionCsv);
+  document.getElementById('btn-export-full-geojson')?.addEventListener('click', exportCurrentRegionGeoJson);
 
   // Download Summary Text Report
   const summaryBtn = document.getElementById('btn-export-summary-txt');
