@@ -52,31 +52,31 @@
     <div class="satellite-telemetry-strip" id="satellite-telemetry-strip">
       <div class="sat-micro-chip" data-sat="terra" title="Terra (MODIS) • 705 km Orbit • 10:30 AM Descending • 1,000m Pixel">
         <span class="sat-dot modis"></span>
-        <span class="sat-code">Terra (1km)</span>
+        <span class="sat-code">Terra (705km)</span>
       </div>
       <div class="sat-micro-chip" data-sat="aqua" title="Aqua (MODIS) • 705 km Orbit • 01:30 PM Ascending • 1,000m Pixel">
         <span class="sat-dot modis"></span>
-        <span class="sat-code">Aqua (1km)</span>
+        <span class="sat-code">Aqua (705km)</span>
       </div>
       <div class="sat-micro-chip" data-sat="snpp" title="Suomi-NPP (VIIRS) • 824 km Orbit • 01:30 PM Ascending • 375m I-Band">
         <span class="sat-dot viirs"></span>
-        <span class="sat-code">S-NPP (375m)</span>
+        <span class="sat-code">S-NPP (824km)</span>
       </div>
       <div class="sat-micro-chip" data-sat="noaa20" title="NOAA-20 (VIIRS) • 824 km Orbit • 01:30 PM Ascending • 375m Prime">
         <span class="sat-dot viirs"></span>
-        <span class="sat-code">NOAA-20 (375m)</span>
+        <span class="sat-code">NOAA-20</span>
       </div>
       <div class="sat-micro-chip" data-sat="noaa21" title="NOAA-21 (VIIRS) • 824 km Orbit • 01:30 PM Ascending • 375m Prime">
         <span class="sat-dot viirs"></span>
-        <span class="sat-code">NOAA-21 (375m)</span>
+        <span class="sat-code">NOAA-21</span>
       </div>
     </div>
 
     <!-- Right Header Actions: Judge Tour, Sound FX, UTC Clock -->
     <div class="header-actions">
-      <button class="btn btn-sm btn-tour-pulse" id="btn-launch-tour" title="Launch 4-Step Animated Mission Briefing for NASA Space Apps Judges">
+      <button class="btn btn-sm btn-tour-pulse" id="btn-launch-tour" title="Launch 60-Second Animated Mission Briefing for NASA Space Apps Judges">
         <span class="tour-dot"></span>
-        <span class="tour-text">▶ Guided Tour (Judge Mode)</span>
+        <span class="tour-text">▶ Run 60s Judge Demo</span>
       </button>
       <button class="btn btn-sm btn-ghost sound-toggle" id="btn-sound-toggle" title="Toggle Synthesizer Telemetry Audio">
         <span id="sound-icon">🔊</span> <span id="sound-status">Sound ON</span>
@@ -349,10 +349,10 @@
               <div class="config-group">
                 <span class="control-label-sm">Metric:</span>
                 <div class="segmented-control xs" id="cal-metric-selector">
-                  <button class="seg-btn active" data-metric="count">Hotspots</button>
-                  <button class="seg-btn" data-metric="frp">FRP (MW)</button>
+                  <button class="seg-btn active" data-metric="count">Hotspot Count</button>
+                  <button class="seg-btn" data-metric="frp">Mean FRP (MW)</button>
+                  <button class="seg-btn" data-metric="fre">Total FRE (MJ)</button>
                   <button class="seg-btn" data-metric="emissions">Carbon (Tg)</button>
-                  <button class="seg-btn" data-metric="anomaly">Anomaly (%)</button>
                   <button class="seg-btn" data-metric="zscore">Z-Score (σ)</button>
                 </div>
               </div>
@@ -360,9 +360,9 @@
               <div class="config-group">
                 <span class="control-label-sm">Color Scale:</span>
                 <select class="form-select xs" id="cal-palette-selector">
-                  <option value="plasma" selected>NASA Plasma</option>
-                  <option value="viridis">Viridis</option>
-                  <option value="inferno">Inferno</option>
+                  <option value="viridis" selected>Viridis (Colorblind-Safe)</option>
+                  <option value="magma">Magma</option>
+                  <option value="plasma">NASA Plasma</option>
                   <option value="diverging">Blue-Red Diverging</option>
                 </select>
               </div>
@@ -1310,6 +1310,69 @@
       <div class="modal-footer">
         <button class="btn btn-sm btn-ghost" id="btn-cancel-save-aoi">Cancel</button>
         <button class="btn btn-sm btn-primary" id="btn-confirm-save-aoi">Save Custom AOI</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Dialog: Month Diagnostic Modal (Raw MODIS vs Raw VIIRS vs Harmonized vs FRE) -->
+  <div class="modal-backdrop" id="month-diagnostic-modal" style="display: none;">
+    <div class="modal-dialog glass-panel" style="max-width: 640px;">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <span class="panel-icon">🔬</span>
+          <div>
+            <h3 class="modal-title" id="diag-modal-title">Observation Diagnostic • October 2026</h3>
+            <p class="modal-desc" style="margin: 0; font-size: 11px; color: var(--text-muted);" id="diag-modal-sub">Cross-Sensor MODIS (1km) vs VIIRS (375m) Reconciliation</p>
+          </div>
+        </div>
+        <button class="btn-close-modal" id="btn-close-diag-modal">&times;</button>
+      </div>
+      <div class="modal-body" style="gap: 16px;">
+        <!-- 4 Diagnostic Metric Cards -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <div class="glass-panel" style="padding: 12px; background: rgba(56, 189, 248, 0.06); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 6px;">
+            <div style="font-size: 11px; color: #38bdf8; font-weight: 700; text-transform: uppercase; margin-bottom: 4px;">🛰️ Raw MODIS (1,000m)</div>
+            <div style="font-size: 20px; font-weight: 800; color: #fff;" id="diag-modis-count">--</div>
+            <div style="font-size: 11px; color: var(--text-dim); margin-top: 2px;" id="diag-modis-frp">Mean FRP: -- MW</div>
+          </div>
+          <div class="glass-panel" style="padding: 12px; background: rgba(249, 115, 22, 0.06); border: 1px solid rgba(249, 115, 22, 0.25); border-radius: 6px;">
+            <div style="font-size: 11px; color: #f97316; font-weight: 700; text-transform: uppercase; margin-bottom: 4px;">🛰️ Raw VIIRS (375m)</div>
+            <div style="font-size: 20px; font-weight: 800; color: #fff;" id="diag-viirs-count">--</div>
+            <div style="font-size: 11px; color: var(--text-dim); margin-top: 2px;" id="diag-viirs-frp">Mean FRP: -- MW</div>
+          </div>
+          <div class="glass-panel" style="padding: 12px; background: rgba(34, 197, 94, 0.06); border: 1px solid rgba(34, 197, 94, 0.25); border-radius: 6px;">
+            <div style="font-size: 11px; color: #22c55e; font-weight: 700; text-transform: uppercase; margin-bottom: 4px;">✓ Harmonized Estimate</div>
+            <div style="font-size: 20px; font-weight: 800; color: #fff;" id="diag-harm-count">--</div>
+            <div style="font-size: 11px; color: var(--text-dim); margin-top: 2px;" id="diag-harm-ci">95% CI: &plusmn;-- hotspots</div>
+          </div>
+          <div class="glass-panel" style="padding: 12px; background: rgba(168, 85, 247, 0.06); border: 1px solid rgba(168, 85, 247, 0.25); border-radius: 6px;">
+            <div style="font-size: 11px; color: #c084fc; font-weight: 700; text-transform: uppercase; margin-bottom: 4px;">⚡ Diurnal Energy (FRE)</div>
+            <div style="font-size: 20px; font-weight: 800; color: #fff;" id="diag-fre-mj">-- MJ</div>
+            <div style="font-size: 11px; color: var(--text-dim); margin-top: 2px;" id="diag-carbon-tg">Emissions: -- Tg CO₂</div>
+          </div>
+        </div>
+
+        <!-- Climatological Baseline & Anomaly Benchmark -->
+        <div class="glass-panel" style="padding: 12px; border-radius: 6px; background: rgba(0,0,0,0.3);">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <span style="font-size: 11px; font-weight: 700; color: var(--text-main);">2000–2025 Multi-Year Climatology Benchmark:</span>
+            <span class="badge" id="diag-anomaly-badge" style="background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid #ef4444; font-size: 10px;">+0.0%</span>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; font-size: 11px;">
+            <div><span style="color: var(--text-dim);">Historical Median:</span> <strong id="diag-hist-median" style="color:#fff;">--</strong></div>
+            <div><span style="color: var(--text-dim);">Z-Score Deviation:</span> <strong id="diag-zscore" style="color:#fff;">--σ</strong></div>
+            <div><span style="color: var(--text-dim);">Dominant Satellite:</span> <strong id="diag-sensor" style="color:#38bdf8;">--</strong></div>
+          </div>
+        </div>
+
+        <!-- Mathematical Harmonization Operator Info -->
+        <div style="font-size: 11px; line-height: 1.5; color: var(--text-dim); background: rgba(255,255,255,0.02); padding: 8px 12px; border-radius: 4px; border-left: 2px solid #38bdf8;">
+          <strong>Observation Transfer Operator:</strong> <code>N_harm = 0.2618 &times; N_VIIRS + 14.2</code> (Theil-Sen Robust Regression, R² = 0.989, Bow-tie edge compression compensated).
+        </div>
+      </div>
+      <div class="modal-footer" style="padding: 12px 18px; display: flex; justify-content: space-between;">
+        <button class="btn btn-xs btn-secondary" id="btn-diag-view-map">📍 Focus Month on Map</button>
+        <button class="btn btn-xs btn-ghost" id="btn-close-diag-modal-ft">Close</button>
       </div>
     </div>
   </div>

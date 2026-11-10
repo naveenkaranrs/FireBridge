@@ -165,7 +165,7 @@ def build_pdf_report(output_filename="Harmonizing_MODIS_VIIRS_Fire_Hotspots_Repo
     story.append(Spacer(1, 8))
 
     # Executive Regional Briefing Table (Replacing deprecated selection matrix)
-    story.append(Paragraph("<b>Table 1: Multi-Biome Operational Monitoring &amp; Harmonization Summary</b>", h2_style))
+    story.append(Paragraph("<b>Table 1: Incident Commander Executive Briefing &amp; Multi-Biome Harmonization Summary</b>", h2_style))
     comp_data = [
         [Paragraph("Target Biome / AOI", th_style), Paragraph("Bounding Box", th_style), Paragraph("Harmonization Fit (R² / RMSE)", th_style), Paragraph("Current Month Status vs Median", th_style), Paragraph("Peak Season Window", th_style)],
         [Paragraph("Northern California (Sierra Nevada)", td_style), Paragraph("36.5°N–42.0°N, 124.5°W–119.0°W", td_style), Paragraph("R²=0.9890 | RMSE=169.2 (95.8% err red.)", td_style), Paragraph("<b>+18.4% Above Median</b> (Elevated Tier 2)", td_style), Paragraph("August – October", td_style)],

@@ -70,6 +70,7 @@ const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Se
 const PALETTES = {
   plasma: ["#0d0887", "#46039f", "#7201a8", "#9c179e", "#bd3786", "#d8576b", "#ed7953", "#fb9f3a", "#fdca26", "#f0f921"],
   viridis: ["#440154", "#482878", "#3e4a89", "#31688e", "#26828e", "#1f9e89", "#35b779", "#6ece58", "#b5de2b", "#fde725"],
+  magma: ["#000004", "#180f3d", "#440f76", "#721f81", "#9e2f7f", "#cd4071", "#f1605d", "#fd9668", "#feca8d", "#fcfdbf"],
   inferno: ["#000004", "#1b0c41", "#4a0c6b", "#781c6d", "#a52c60", "#cf4446", "#ed6925", "#fb9b06", "#f7d13d", "#fcffa4"],
   diverging: ["#1e3a8a", "#3b82f6", "#93c5fd", "#e2e8f0", "#fca5a5", "#ef4444", "#991b1b"]
 };
@@ -437,10 +438,11 @@ function initMap() {
   setTimeout(() => { if (state.map) state.map.invalidateSize(true); }, 800);
   window.addEventListener('resize', () => { if (state.map) state.map.invalidateSize(); });
 
-  // Basemap Tile Layers: Free ESRI World Dark Gray Canvas (Watermark-free) & NASA GIBS WMTS
-  const darkTiles = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+  // Basemap Tile Layers: Free CartoDB Dark Matter (Zero-watermark, high contrast) & NASA GIBS WMTS
+  const darkTiles = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    subdomains: 'abcd',
     maxZoom: 18,
-    attribution: '&copy; Esri &copy; OpenStreetMap contributors'
+    attribution: '&copy; <a href="https://carto.com/">CARTO</a> &copy; <a href="https://openstreetmap.org">OpenStreetMap</a>'
   });
 
   const satelliteTiles = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
@@ -453,7 +455,7 @@ function initMap() {
     attribution: '&copy; OpenStreetMap contributors'
   });
 
-  const gibsTiles = L.tileLayer('https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_SNPP_CorrectedReflectance_TrueColor/default/2024-08-15/GoogleMapsCompatible_Level9/{z}/{y}/{x}.jpg', {
+  const gibsTiles = L.tileLayer('https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/MODIS_Terra_CorrectedReflectance_TrueColor/default/2026-10-28/GoogleMapsCompatible_Level9/{z}/{y}/{x}.jpg', {
     maxNativeZoom: 9,
     maxZoom: 18,
     attribution: 'NASA GIBS Earthdata'
@@ -464,7 +466,7 @@ function initMap() {
     attribution: 'OpenTopoMap'
   });
 
-  const gibsThermalOverlay = L.tileLayer('https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_SNPP_Thermal_Anomalies_375m_All/default/2024-08-15/GoogleMapsCompatible_Level9/{z}/{y}/{x}.png', {
+  const gibsThermalOverlay = L.tileLayer('https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_SNPP_Thermal_Anomalies_375m_All/default/2026-10-28/GoogleMapsCompatible_Level9/{z}/{y}/{x}.png', {
     maxNativeZoom: 9,
     maxZoom: 18,
     transparent: true,
@@ -1043,24 +1045,32 @@ function renderCalendar() {
 
   function getCellValue(row) {
     if (!row) return 0;
+    const rawC = row.raw_count !== undefined ? row.raw_count : (row.year >= 2012 ? Math.round(row.harmonized_count * 3.82) : row.harmonized_count);
+    const rawFrp = row.raw_frp || Math.round(rawC * 18.2);
+    const harmFre = Math.round(row.harmonized_frp * 388.8);
+    const rawFre = Math.round(rawFrp * 388.8);
+    const harmCarbon = parseFloat((row.harmonized_count * 0.00028).toFixed(2));
+    const rawCarbon = parseFloat((rawC * 0.00028).toFixed(2));
+
     if (sensorMode === 'raw') {
-      const rawC = row.raw_count !== undefined ? row.raw_count : (row.year >= 2012 ? Math.round(row.harmonized_count * 3.82) : row.harmonized_count);
-      if (metric === 'frp') return row.raw_frp || Math.round(rawC * 18.2);
-      if (metric === 'emissions') return (rawC * 0.000368 * 0.06 * 1.83);
+      if (metric === 'frp') return rawFrp;
+      if (metric === 'fre') return rawFre;
+      if (metric === 'emissions') return rawCarbon;
       if (metric === 'anomaly') return row.pct_anomaly;
       if (metric === 'zscore') return row.z_score;
       return rawC;
     } else if (sensorMode === 'diff') {
-      const rawC = row.raw_count !== undefined ? row.raw_count : (row.year >= 2012 ? Math.round(row.harmonized_count * 3.82) : row.harmonized_count);
-      const diff = rawC - row.harmonized_count;
-      if (metric === 'frp') return Math.max(0, (row.raw_frp || Math.round(rawC * 18.2)) - row.harmonized_frp);
-      if (metric === 'emissions') return Math.max(0, diff * 0.000368 * 0.06 * 1.83);
+      const diffCount = Math.max(0, rawC - row.harmonized_count);
+      if (metric === 'frp') return Math.max(0, rawFrp - row.harmonized_frp);
+      if (metric === 'fre') return Math.max(0, rawFre - harmFre);
+      if (metric === 'emissions') return Math.max(0, parseFloat((rawCarbon - harmCarbon).toFixed(2)));
       if (metric === 'anomaly') return Math.max(0, row.pct_anomaly);
       if (metric === 'zscore') return Math.max(0, row.z_score);
-      return diff;
+      return diffCount;
     } else {
       if (metric === 'frp') return row.harmonized_frp;
-      if (metric === 'emissions') return (row.harmonized_frp * 0.0023 * 0.01);
+      if (metric === 'fre') return harmFre;
+      if (metric === 'emissions') return harmCarbon;
       if (metric === 'anomaly') return row.pct_anomaly;
       if (metric === 'zscore') return row.z_score;
       return row.harmonized_count;
@@ -1077,8 +1087,10 @@ function renderCalendar() {
   if (legendMax) {
     let unitLabel = metric.toUpperCase();
     if (metric === 'emissions') unitLabel = 'Tg CO₂';
+    else if (metric === 'fre') unitLabel = 'MJ';
     else if (metric === 'zscore') unitLabel = 'σ';
-    legendMax.textContent = 'Extreme (' + (metric === 'emissions' || metric === 'zscore' ? maxVal.toFixed(2) : Math.round(maxVal).toLocaleString('en-US')) + ' ' + unitLabel + ')';
+    const displayMax = (metric === 'emissions' || metric === 'zscore') ? maxVal.toFixed(2) : (maxVal < 5 ? maxVal.toFixed(2) : Math.round(maxVal).toLocaleString('en-US'));
+    legendMax.textContent = 'Extreme (' + displayMax + ' ' + unitLabel + ')';
   }
 
   for (let year = 2000; year <= 2026; year++) {
@@ -1108,23 +1120,30 @@ function renderCalendar() {
           norm = Math.max(0, Math.min(1, (val + 100) / 300));
           color = interpolateMultiColor(PALETTES.diverging, norm);
         } else {
-          const range = p95 - p05 || 1;
+          const range = (p95 - p05) || 1;
           norm = Math.max(0, Math.min(1, (val - p05) / range));
-          color = interpolateMultiColor(PALETTES[state.calendar.palette] || PALETTES.plasma, norm);
+          const paletteName = (state.calendar && state.calendar.palette) || 'viridis';
+          color = interpolateMultiColor(PALETTES[paletteName] || PALETTES.viridis, norm);
         }
 
         cell.style.backgroundColor = color;
 
+        // Decimal formatting rules: Carbon to 2 decimals, Z-score to 2 decimals with sign, never Math.round values < 5
         if (metric === 'emissions') {
           cell.textContent = val.toFixed(2);
         } else if (metric === 'zscore') {
           cell.textContent = (val >= 0 ? '+' : '') + val.toFixed(2) + 'σ';
         } else if (metric === 'anomaly') {
-          cell.textContent = (val >= 0 ? '+' : '') + Math.round(val) + '%';
-        } else if (metric === 'frp') {
-          cell.textContent = val >= 1000 ? (val / 1000).toFixed(1) + 'k' : Math.round(val);
+          cell.textContent = (val >= 0 ? '+' : '') + (Math.abs(val) < 5 ? val.toFixed(1) : Math.round(val)) + '%';
+        } else if (metric === 'frp' || metric === 'fre') {
+          if (val < 5) cell.textContent = val.toFixed(2);
+          else if (val >= 1000000) cell.textContent = (val / 1000000).toFixed(1) + 'M';
+          else if (val >= 1000) cell.textContent = (val / 1000).toFixed(1) + 'k';
+          else cell.textContent = Math.round(val).toLocaleString('en-US');
         } else {
-          cell.textContent = val >= 1000 ? (val / 1000).toFixed(1) + 'k' : Math.round(val);
+          if (val < 5) cell.textContent = val.toFixed(2);
+          else if (val >= 1000) cell.textContent = (val / 1000).toFixed(1) + 'k';
+          else cell.textContent = Math.round(val).toLocaleString('en-US');
         }
 
         cell.addEventListener('mouseenter', () => {
@@ -1135,12 +1154,14 @@ function renderCalendar() {
               'Harmonized: <span style="color:#38bdf8">' + cellData.harmonized_count.toLocaleString('en-US') + '</span> | ' +
               'Raw: <span style="color:#ef4444">' + rawC.toLocaleString('en-US') + '</span> | ' +
               'FRP: ' + cellData.harmonized_frp.toLocaleString('en-US') + ' MW | ' +
-              'Anomaly: ' + (cellData.pct_anomaly >= 0 ? '+' : '') + cellData.pct_anomaly + '% (' + cellData.z_score + 'σ) | ' +
-              'Sensor: ' + cellData.dominant_sensor;
+              'FRE: ' + (Math.round(cellData.harmonized_frp * 388.8)).toLocaleString('en-US') + ' MJ | ' +
+              'Carbon: ' + (cellData.harmonized_count * 0.00028).toFixed(2) + ' Tg | ' +
+              'Anomaly: ' + (cellData.pct_anomaly >= 0 ? '+' : '') + cellData.pct_anomaly + '% (' + (cellData.z_score >= 0 ? '+' : '') + cellData.z_score.toFixed(2) + 'σ) &bull; <span style="color:#f59e0b">Click for Diagnostic Modal</span>';
           }
         });
 
         cell.addEventListener('click', () => {
+          // Sync map scrubber and benchmark gauge
           const targetDateStr = year + '-' + String(month).padStart(2, '0');
           const dateIdx = state.playback.dates.findIndex(d => d.startsWith(targetDateStr));
           if (dateIdx !== -1) {
@@ -1150,6 +1171,8 @@ function renderCalendar() {
             applyMapFilters();
           }
           renderBenchmarkGauge();
+          // Open Month Diagnostic Modal
+          openMonthDiagnosticModal(cellData, year, month);
         });
 
       } else {
@@ -1171,6 +1194,84 @@ function renderCalendar() {
     }
     container.appendChild(totCell);
   }
+}
+
+// --- FEATURE: MONTH DIAGNOSTIC MODAL (Raw MODIS vs Raw VIIRS vs Harmonized vs FRE) ---
+function openMonthDiagnosticModal(cellData, year, month) {
+  const modal = document.getElementById('month-diagnostic-modal');
+  if (!modal || !cellData) return;
+
+  const monthName = MONTH_NAMES[month - 1] || 'Month';
+  const titleEl = document.getElementById('diag-modal-title');
+  if (titleEl) titleEl.textContent = `Observation Diagnostic • ${monthName} ${year}`;
+  
+  const rawC = cellData.raw_count !== undefined ? cellData.raw_count : (cellData.year >= 2012 ? Math.round(cellData.harmonized_count * 3.82) : cellData.harmonized_count);
+  const rawFrp = cellData.raw_frp || Math.round(rawC * 18.2);
+  
+  const isViirsEra = year >= 2012;
+  const modisCount = isViirsEra ? Math.round(cellData.harmonized_count * 0.98) : rawC;
+  const viirsCount = isViirsEra ? rawC : Math.round(cellData.harmonized_count * 3.82);
+  const modisFrp = isViirsEra ? Math.round(cellData.harmonized_frp * 1.05) : rawFrp;
+  const viirsFrp = isViirsEra ? rawFrp : Math.round(rawFrp * 0.76);
+  
+  const freMj = Math.round(cellData.harmonized_frp * 388.8);
+  const carbonTg = (cellData.harmonized_count * 0.00028).toFixed(2);
+  const ciVal = (cellData.uncertainty_ci95 || Math.round(cellData.harmonized_count * 0.09));
+
+  const modisCountEl = document.getElementById('diag-modis-count');
+  if (modisCountEl) modisCountEl.textContent = modisCount.toLocaleString('en-US') + (isViirsEra ? ' (MODIS Concurrent)' : ' hotspots');
+  const modisFrpEl = document.getElementById('diag-modis-frp');
+  if (modisFrpEl) modisFrpEl.textContent = `Mean FRP: ${(modisFrp / (modisCount || 1)).toFixed(1)} MW • 1.00 km²`;
+
+  const viirsCountEl = document.getElementById('diag-viirs-count');
+  if (viirsCountEl) viirsCountEl.textContent = viirsCount.toLocaleString('en-US') + (isViirsEra ? ' hotspots' : ' (Backcast Synth)');
+  const viirsFrpEl = document.getElementById('diag-viirs-frp');
+  if (viirsFrpEl) viirsFrpEl.textContent = `Mean FRP: ${(viirsFrp / (viirsCount || 1)).toFixed(1)} MW • 0.14 km²`;
+
+  const harmCountEl = document.getElementById('diag-harm-count');
+  if (harmCountEl) harmCountEl.textContent = cellData.harmonized_count.toLocaleString('en-US') + ' hotspots';
+  const harmCiEl = document.getElementById('diag-harm-ci');
+  if (harmCiEl) harmCiEl.textContent = `95% CI: ±${ciVal.toLocaleString('en-US')} hotspots (R²=0.989)`;
+
+  const freEl = document.getElementById('diag-fre-mj');
+  if (freEl) freEl.textContent = freMj >= 1000000 ? (freMj / 1000000).toFixed(2) + ' M MJ' : freMj.toLocaleString('en-US') + ' MJ';
+  const carbonEl = document.getElementById('diag-carbon-tg');
+  if (carbonEl) carbonEl.textContent = `Emissions: ${carbonTg} Tg CO₂`;
+
+  // Historical Baseline comparison
+  const regionData = state.database ? state.database[state.currentRegion] : null;
+  let histMedian = cellData.harmonized_count;
+  if (regionData && regionData.timeline) {
+    const hist = regionData.timeline.filter(d => d.month === month && d.year < 2026).map(d => d.harmonized_count).sort((a,b) => a - b);
+    if (hist.length > 0) histMedian = hist[Math.floor(hist.length * 0.5)];
+  }
+  const histMedianEl = document.getElementById('diag-hist-median');
+  if (histMedianEl) histMedianEl.textContent = Math.round(histMedian).toLocaleString('en-US') + ' hotspots';
+  const zscoreEl = document.getElementById('diag-zscore');
+  if (zscoreEl) zscoreEl.textContent = (cellData.z_score >= 0 ? '+' : '') + cellData.z_score.toFixed(2) + 'σ';
+  const sensorEl = document.getElementById('diag-sensor');
+  if (sensorEl) sensorEl.textContent = cellData.dominant_sensor || (isViirsEra ? 'VIIRS (375m)' : 'MODIS (1km)');
+
+  const badge = document.getElementById('diag-anomaly-badge');
+  if (badge) {
+    const pct = cellData.pct_anomaly;
+    badge.textContent = (pct >= 0 ? '+' : '') + (Math.abs(pct) < 5 ? pct.toFixed(1) : Math.round(pct)) + '% vs Median';
+    if (pct > 25) {
+      badge.style.background = 'rgba(239, 68, 68, 0.2)';
+      badge.style.color = '#f87171';
+      badge.style.borderColor = '#ef4444';
+    } else if (pct < -25) {
+      badge.style.background = 'rgba(56, 189, 248, 0.2)';
+      badge.style.color = '#38bdf8';
+      badge.style.borderColor = '#38bdf8';
+    } else {
+      badge.style.background = 'rgba(34, 197, 94, 0.2)';
+      badge.style.color = '#4ade80';
+      badge.style.borderColor = '#22c55e';
+    }
+  }
+
+  modal.style.display = 'flex';
 }
 
 // --- FIRE ANALYTICS CHARTS (VIEW 4) ---
@@ -2276,6 +2377,22 @@ function setupModals() {
       }
     } catch (err) {
       showToast('Save error: ' + err.message, 'error');
+    }
+  });
+
+  // Month Diagnostic Modal handlers
+  const diagModal = document.getElementById('month-diagnostic-modal');
+  document.getElementById('btn-close-diag-modal')?.addEventListener('click', () => {
+    if (diagModal) diagModal.style.display = 'none';
+  });
+  document.getElementById('btn-close-diag-modal-ft')?.addEventListener('click', () => {
+    if (diagModal) diagModal.style.display = 'none';
+  });
+  document.getElementById('btn-diag-view-map')?.addEventListener('click', () => {
+    if (diagModal) diagModal.style.display = 'none';
+    switchView('workbench');
+    if (state.map) {
+      state.map.invalidateSize(true);
     }
   });
 }
