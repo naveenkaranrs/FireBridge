@@ -438,12 +438,18 @@ function initMap() {
   setTimeout(() => { if (state.map) state.map.invalidateSize(true); }, 800);
   window.addEventListener('resize', () => { if (state.map) state.map.invalidateSize(); });
 
-  // Basemap Tile Layers: Free CartoDB Dark Matter (Zero-watermark, high contrast) & NASA GIBS WMTS
-  const darkTiles = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-    subdomains: 'abcd',
+  // Basemap Tile Layers: Free Esri World Dark Gray Canvas (100% free, zero authentication required, ZERO watermarks) & NASA GIBS WMTS
+  const darkBase = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+    maxNativeZoom: 16,
     maxZoom: 18,
-    attribution: '&copy; <a href="https://carto.com/">CARTO</a> &copy; <a href="https://openstreetmap.org">OpenStreetMap</a>'
+    attribution: '&copy; Esri &copy; OpenStreetMap contributors'
   });
+  const darkLabels = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}', {
+    maxNativeZoom: 16,
+    maxZoom: 18,
+    opacity: 0.85
+  });
+  const darkTiles = L.layerGroup([darkBase, darkLabels]);
 
   const satelliteTiles = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
     maxZoom: 18,
@@ -2007,7 +2013,7 @@ function setupGlobalEvents() {
         else if (layer === 'osm') state.mapLayers.tileLayer = state.mapLayers.osmLayer.addTo(state.map);
         else if (layer === 'gibs') state.mapLayers.tileLayer = state.mapLayers.gibsLayer.addTo(state.map);
         else if (layer === 'terrain') state.mapLayers.tileLayer = state.mapLayers.terrainLayer.addTo(state.map);
-        else state.mapLayers.tileLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { subdomains: 'abcd', maxZoom: 18 }).addTo(state.map);
+        else state.mapLayers.tileLayer = state.mapLayers.darkLayer.addTo(state.map);
       }
     });
   }
