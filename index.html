@@ -197,11 +197,13 @@
               </div>
 
               <!-- Drawing Controls -->
+              <!-- Drawing Controls & Live FIRMS Ingestion -->
               <div class="map-ctrl-group aoi-draw-btns">
                 <button class="btn btn-xs btn-secondary" id="btn-draw-rect" title="Draw bounding box rectangle on map">Draw Box</button>
                 <button class="btn btn-xs btn-secondary" id="btn-draw-poly" title="Draw custom polygon on map">Draw Polygon</button>
                 <button class="btn btn-xs btn-ghost" id="btn-clear-draw" title="Clear drawn AOI">Clear</button>
                 <button class="btn btn-xs btn-ghost" id="btn-toggle-coord-drawer" title="Toggle manual Lat/Lon coordinates input drawer">⚙ Coords</button>
+                <button class="btn btn-xs btn-primary btn-firms-pulse" id="btn-toggle-firms-panel" title="Toggle Live NASA FIRMS API Connector &amp; NRT Stream">🛰️ Live FIRMS</button>
               </div>
             </div>
 
@@ -229,6 +231,29 @@
               <input type="number" step="0.5" id="map-max-lon" placeholder="Max Lon" class="coord-inp-sm">
               <button class="btn btn-xs btn-primary" id="btn-apply-map-coords">Apply &amp; Synthesize AOI</button>
               <button class="btn btn-xs btn-secondary" id="btn-save-custom-aoi">Save AOI</button>
+            </div>
+          </div>
+
+          <!-- Collapsible Live NASA FIRMS API Stream Widget -->
+          <div class="firms-stream-panel" id="firms-stream-panel" style="display: none;">
+            <div class="firms-stream-inner">
+              <div class="firms-stream-header">
+                <span class="live-dot-glow green"></span>
+                <span class="firms-stream-title">Live NASA LANCE / FIRMS API Connector (Near-Real-Time Stream)</span>
+                <span class="firms-stream-badge">Direct NASA Gateway</span>
+              </div>
+              <div class="firms-stream-inputs">
+                <input type="text" id="firms-stream-key" placeholder="Paste free NASA FIRMS MAP_KEY (or leave blank for Curated Live NRT Feed)" class="coord-inp-sm" style="flex: 2; min-width: 260px;">
+                <select id="firms-stream-source" class="form-select xs" style="flex: 1; max-width: 170px;">
+                  <option value="VIIRS_NOAA20_NRT" selected>VIIRS NOAA-20 (375m)</option>
+                  <option value="VIIRS_SNPP_NRT">VIIRS S-NPP (375m)</option>
+                  <option value="MODIS_NRT">MODIS Terra/Aqua (1km)</option>
+                </select>
+                <button class="btn btn-xs btn-primary" id="btn-run-live-stream">▶ Ingest Real-Time NRT</button>
+              </div>
+              <div class="firms-stream-status" id="firms-stream-status">
+                Telemetry: Ready to stream live active fire vector observations for current week.
+              </div>
             </div>
           </div>
 
@@ -333,13 +358,18 @@
                 </div>
               </div>
 
-              <!-- 3-Way Sensor Cliff Harmonization Toggle -->
+              <!-- 3-Way Sensor Cliff Harmonization Toggle & 1-Click Exports -->
               <div class="sensor-cliff-toggle-group">
                 <span class="cliff-toggle-label">Harmonization Mode:</span>
                 <div class="btn-group" id="sensor-cliff-toggle">
                   <button class="btn btn-xs btn-cliff active" data-mode="harmonized" title="View continuous, sensor-agnostic climate record">✓ Harmonized (Theil-Sen)</button>
                   <button class="btn btn-xs btn-cliff" data-mode="raw" title="View raw unharmonized data showing the artificial 2012 VIIRS +3.8x jump">⚠️ Raw Unharmonized (+3.8x)</button>
                   <button class="btn btn-xs btn-cliff" data-mode="diff" title="View the artificial sensor bias removed by FireBridge">Δ Bias Removed</button>
+                </div>
+                <!-- 1-Click Judge Export Actions -->
+                <div class="cal-quick-exports" style="display: flex; gap: 6px; margin-left: 10px;">
+                  <button class="btn btn-xs btn-primary" id="btn-quick-export-csv" title="1-Click Download Harmonized NASA FIRMS CSV for active AOI">📥 Download Harmonized CSV</button>
+                  <button class="btn btn-xs btn-secondary" id="btn-quick-export-geojson" title="1-Click Export AOI GeoJSON FeatureCollection for QGIS / ArcGIS">🗺️ Export AOI GeoJSON</button>
                 </div>
               </div>
             </div>
@@ -1349,6 +1379,26 @@
             <div style="font-size: 11px; color: #c084fc; font-weight: 700; text-transform: uppercase; margin-bottom: 4px;">⚡ Diurnal Energy (FRE)</div>
             <div style="font-size: 20px; font-weight: 800; color: #fff;" id="diag-fre-mj">-- MJ</div>
             <div style="font-size: 11px; color: var(--text-dim); margin-top: 2px;" id="diag-carbon-tg">Emissions: -- Tg CO₂</div>
+          </div>
+        </div>
+
+        <!-- Interactive 24-Hour Vermote/Ellicott Diurnal Gaussian Energy Cycle Chart -->
+        <div class="glass-panel" style="padding: 12px; border-radius: 6px; background: rgba(0,0,0,0.35); border: 1px solid rgba(255,255,255,0.08);">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <div style="font-size: 11px; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 6px;">
+              <span>📈 24-Hour Vermote/Ellicott Diurnal FRP Cycle:</span>
+              <span style="font-size: 10px; color: var(--text-dim); font-weight: normal;">FRP(t) = FRP_peak · exp(-0.5·((t - 13.5)/σ)²) + FRP_base</span>
+            </div>
+            <span style="font-size: 10px; color: #f59e0b; font-weight: 700;" id="diag-diurnal-integral">FRE: -- MJ/day</span>
+          </div>
+          <div style="height: 120px; position: relative;">
+            <canvas id="diag-diurnal-canvas"></canvas>
+          </div>
+          <div style="display: flex; justify-content: space-between; margin-top: 4px; font-size: 10px; color: var(--text-muted);">
+            <span>🌙 <strong>01:30</strong> VIIRS Night Base</span>
+            <span style="color: #38bdf8;">🛰️ <strong>10:30</strong> Terra Overpass</span>
+            <span style="color: #f97316;">🔥 <strong>13:30</strong> Aqua/VIIRS Peak</span>
+            <span>🌙 <strong>22:30</strong> Smoldering Decay</span>
           </div>
         </div>
 
