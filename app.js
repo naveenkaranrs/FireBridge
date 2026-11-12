@@ -200,25 +200,40 @@ function animateCounter(elOrId, targetVal, duration = 900, decimals = 0, prefix 
 
 // --- INITIALIZATION ---
 document.addEventListener('DOMContentLoaded', async () => {
+  // 1. Initialize UI Controls, Router, and Navigation IMMEDIATELY
+  // This guarantees tabs, buttons, and drawer open instantly with zero network dependency
   try {
     initUtcClock();
     initMissionNavigation();
-    initMap();
+    initRouter();
     setupGlobalEvents();
-    initConstellationOrbitTracker();
-    initOpticalSimulator();
-    initJudgeGuidedTour();
     initHarmonizationLab();
+    initJudgeGuidedTour();
     initClimateSimWorkspace();
     initBowTieWorkspace();
+    initOpticalSimulator();
+    initDozierInverter();
+    initConstellationOrbitTracker();
+  } catch (err) {
+    console.error('[!] Synchronous UI setup error:', err);
+  }
 
-    // Load database FIRST before routing and initial rendering
+  // 2. Initialize Geospatial Leaflet Map in isolated block
+  try {
+    initMap();
+  } catch (err) {
+    console.error('[!] Map initialization error:', err);
+  }
+
+  // 3. Load Fire Database asynchronously
+  try {
     await loadDatabase();
+  } catch (err) {
+    console.warn('[!] Database fetch error:', err);
+  }
 
-    // Initialize router after database is ready
-    initRouter();
-
-    // Render initial views
+  // 4. Render initial statistics and calendar
+  try {
     renderOverviewKpis();
     renderBenchmarkGauge();
     renderCalendar();
@@ -227,7 +242,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderAnomalyCharts();
     renderRegionalCharts();
   } catch (err) {
-    console.error('[!] Initialization error:', err);
+    console.warn('[!] Initial chart render error:', err);
   }
 });
 
@@ -299,12 +314,15 @@ function initRouter() {
     'regional': 'workbench',
     'comparison': 'harmonization',
     'optical': 'harmonization',
-    'lab': 'harmonization',
-    'labs': 'climatology',
-    'anomaly': 'climatology',
-    'climatesim': 'climatology',
-    'orbit': 'orbit3d',
-    'swath': 'orbit3d',
+    'lab': 'labs',
+    'labs': 'labs',
+    'climatology': 'labs',
+    'anomaly': 'labs',
+    'climatesim': 'labs',
+    'orbit': 'labs',
+    'orbit3d': 'labs',
+    'swath': 'labs',
+    'dozier': 'labs',
     'data': 'gateway',
     'methodology': 'gateway',
     'quality': 'gateway',
@@ -312,11 +330,33 @@ function initRouter() {
     'about': 'gateway'
   };
 
-  function navigateToView(viewName) {
-    let resolved = viewName ? viewName.replace('#', '') : 'workbench';
-    if (legacyAliases[resolved]) {
-      resolved = legacyAliases[resolved];
+  function switchLabsSubpanel(subviewKey) {
+    const subpanels = document.querySelectorAll('.labs-subpanel');
+    const subtabs = document.querySelectorAll('#labs-subnav .seg-btn');
+
+    subpanels.forEach(p => {
+      const match = p.id === `subpanel-${subviewKey}`;
+      p.classList.toggle('active', match);
+      p.style.display = match ? 'block' : 'none';
+    });
+    subtabs.forEach(t => t.classList.toggle('active', t.dataset.subview === subviewKey));
+
+    if (subviewKey === 'orbit3d') {
+      setTimeout(() => initOrbit3DVisualizer(), 120);
+    } else if (subviewKey === 'climatology') {
+      setTimeout(() => {
+        initClimateSimulator();
+        renderAnomalyCharts();
+        renderClimateProjectionChart();
+      }, 120);
+    } else if (subviewKey === 'dozier') {
+      setTimeout(() => initDozierInverter(), 120);
     }
+  }
+
+  function navigateToView(viewName) {
+    let raw = viewName ? viewName.replace('#', '') : 'workbench';
+    let resolved = legacyAliases[raw] || raw;
 
     const targetView = document.getElementById('view-' + resolved);
     if (!targetView) return;
@@ -327,7 +367,7 @@ function initRouter() {
     // Sync Main Horizontal Nav Tabs
     document.querySelectorAll('#main-nav-tabs .nav-link').forEach(link => {
       const linkView = link.dataset.view || link.getAttribute('href')?.replace('#', '');
-      const isActive = linkView === resolved || (resolved === 'climatology' && linkView === 'labs');
+      const isActive = linkView === resolved;
       link.classList.toggle('active', isActive);
       link.setAttribute('aria-selected', isActive ? 'true' : 'false');
       if (isActive) {
@@ -338,7 +378,7 @@ function initRouter() {
     // Sync Left Mission Directory Drawer Items
     document.querySelectorAll('.drawer-nav-item').forEach(item => {
       const itemView = item.dataset.view || item.getAttribute('href')?.replace('#', '');
-      const isActive = itemView === resolved || (resolved === 'climatology' && itemView === 'labs');
+      const isActive = itemView === resolved || itemView === raw;
       item.classList.toggle('active', isActive);
     });
 
@@ -351,19 +391,22 @@ function initRouter() {
       renderBenchmarkGauge();
       renderCalendar();
       renderAnalyticsChart();
-    } else if (resolved === 'climatology') {
-      setTimeout(() => {
-        initClimateSimulator();
-        renderAnomalyCharts();
-      }, 150);
-    } else if (resolved === 'orbit3d') {
-      setTimeout(() => initOrbit3DVisualizer(), 150);
+    } else if (resolved === 'labs') {
+      let targetSub = 'climatology';
+      if (raw === 'orbit3d' || raw === 'orbit' || raw === 'swath') {
+        targetSub = 'orbit3d';
+      } else if (raw === 'dozier') {
+        targetSub = 'dozier';
+      } else {
+        const activeSub = document.querySelector('.labs-subpanel.active');
+        if (activeSub) targetSub = activeSub.id.replace('subpanel-', '');
+      }
+      switchLabsSubpanel(targetSub);
     } else if (resolved === 'harmonization') {
       setTimeout(() => {
         renderComparisonCharts();
         initOpticalSimulator();
         renderCliffReconcilerChart();
-        initDozierInverter();
         updateModelKpiDisplay();
       }, 150);
     }
@@ -384,6 +427,17 @@ function initRouter() {
     });
   });
 
+  // Bind subnav buttons inside Experimental Labs
+  document.querySelectorAll('#labs-subnav .seg-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      audioFX.click();
+      const sub = btn.dataset.subview;
+      if (sub) {
+        switchLabsSubpanel(sub);
+      }
+    });
+  });
+
   window.addEventListener('hashchange', handleRoute);
   handleRoute();
 }
@@ -394,15 +448,24 @@ async function loadDatabase() {
     const res = await fetch('/api/regions/california/statistics');
     if (res.ok) {
       const dbRes = await fetch('data/harmonized_fire_database.json');
-      state.database = await dbRes.json();
-      console.log('[+] Connected to FireBridge REST API & loaded database.');
-    } else {
-      throw new Error('API not answering');
+      if (dbRes.ok) {
+        state.database = await dbRes.json();
+        console.log('[+] Connected to FireBridge REST API & loaded database.');
+      }
     }
   } catch (err) {
-    console.warn('[!] Direct REST API fallback, loading data/harmonized_fire_database.json directly...');
-    const dbRes = await fetch('data/harmonized_fire_database.json');
-    state.database = await dbRes.json();
+    // API not responding, fall back to direct file fetch
+  }
+
+  if (!state.database) {
+    try {
+      const dbRes = await fetch('data/harmonized_fire_database.json');
+      if (dbRes.ok) {
+        state.database = await dbRes.json();
+      }
+    } catch (e2) {
+      console.warn('[!] Direct JSON fetch failed, checking memory fallback:', e2);
+    }
   }
 
   // Set active hotspots for current region
@@ -412,6 +475,7 @@ async function loadDatabase() {
 // Switch active region/biome
 function updateActiveRegion(regionKey) {
   state.currentRegion = regionKey;
+  if (!state.database) return;
   const regionData = state.database[regionKey];
   if (!regionData) return;
 
