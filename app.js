@@ -289,8 +289,7 @@ function initMissionNavigation() {
   }
 }
 
-// Hash-based View Routing for all 14 Application Sections
-// Hash-based View Routing for all 5 Operational Workspaces
+// Hash-based View Routing for all Operational Workspaces
 function initRouter() {
   const legacyAliases = {
     'overview': 'workbench',
@@ -300,8 +299,12 @@ function initRouter() {
     'regional': 'workbench',
     'comparison': 'harmonization',
     'optical': 'harmonization',
+    'lab': 'harmonization',
+    'labs': 'climatology',
     'anomaly': 'climatology',
     'climatesim': 'climatology',
+    'orbit': 'orbit3d',
+    'swath': 'orbit3d',
     'data': 'gateway',
     'methodology': 'gateway',
     'quality': 'gateway',
@@ -309,60 +312,77 @@ function initRouter() {
     'about': 'gateway'
   };
 
-  function handleRoute() {
-    let hash = window.location.hash.replace('#', '') || 'workbench';
-    if (legacyAliases[hash]) {
-      hash = legacyAliases[hash];
+  function navigateToView(viewName) {
+    let resolved = viewName ? viewName.replace('#', '') : 'workbench';
+    if (legacyAliases[resolved]) {
+      resolved = legacyAliases[resolved];
     }
 
-    const targetView = document.getElementById('view-' + hash);
-    if (targetView) {
-      document.querySelectorAll('.app-view').forEach(v => v.classList.remove('active'));
-      targetView.classList.add('active');
+    const targetView = document.getElementById('view-' + resolved);
+    if (!targetView) return;
 
-      // Sync Main Horizontal Nav Tabs
-      document.querySelectorAll('#main-nav-tabs .nav-link').forEach(link => {
-        const isActive = link.dataset.view === hash;
-        link.classList.toggle('active', isActive);
-        if (isActive) {
-          link.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
-        }
-      });
+    document.querySelectorAll('.app-view').forEach(v => v.classList.remove('active'));
+    targetView.classList.add('active');
 
-      // Sync Left Mission Directory Drawer Items
-      document.querySelectorAll('.drawer-nav-item').forEach(item => {
-        item.classList.toggle('active', item.dataset.view === hash);
-      });
+    // Sync Main Horizontal Nav Tabs
+    document.querySelectorAll('#main-nav-tabs .nav-link').forEach(link => {
+      const linkView = link.dataset.view || link.getAttribute('href')?.replace('#', '');
+      const isActive = linkView === resolved || (resolved === 'climatology' && linkView === 'labs');
+      link.classList.toggle('active', isActive);
+      link.setAttribute('aria-selected', isActive ? 'true' : 'false');
+      if (isActive) {
+        link.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+      }
+    });
 
-      state.currentView = hash;
+    // Sync Left Mission Directory Drawer Items
+    document.querySelectorAll('.drawer-nav-item').forEach(item => {
+      const itemView = item.dataset.view || item.getAttribute('href')?.replace('#', '');
+      const isActive = itemView === resolved || (resolved === 'climatology' && itemView === 'labs');
+      item.classList.toggle('active', isActive);
+    });
 
-      if (hash === 'workbench') {
-        if (state.map) {
-          setTimeout(() => state.map.invalidateSize(), 150);
-        }
-        renderBenchmarkGauge();
-        renderCalendar();
-        renderAnalyticsChart();
+    state.currentView = resolved;
+
+    if (resolved === 'workbench') {
+      if (state.map) {
+        setTimeout(() => state.map.invalidateSize(), 150);
       }
-      if (hash === 'labs' || hash === 'climatology') {
-        setTimeout(() => {
-          initClimateSimulator();
-          renderAnomalyCharts();
-        }, 150);
-      }
-      if (hash === 'orbit3d') {
-        setTimeout(() => initOrbit3DVisualizer(), 150);
-      }
-      if (hash === 'harmonization') {
-        setTimeout(() => {
-          renderComparisonCharts();
-          initOpticalSimulator();
-          renderCliffReconcilerChart();
-          initDozierInverter();
-        }, 150);
-      }
+      renderBenchmarkGauge();
+      renderCalendar();
+      renderAnalyticsChart();
+    } else if (resolved === 'climatology') {
+      setTimeout(() => {
+        initClimateSimulator();
+        renderAnomalyCharts();
+      }, 150);
+    } else if (resolved === 'orbit3d') {
+      setTimeout(() => initOrbit3DVisualizer(), 150);
+    } else if (resolved === 'harmonization') {
+      setTimeout(() => {
+        renderComparisonCharts();
+        initOpticalSimulator();
+        renderCliffReconcilerChart();
+        initDozierInverter();
+        updateModelKpiDisplay();
+      }, 150);
     }
   }
+
+  function handleRoute() {
+    let hash = window.location.hash.replace('#', '') || 'workbench';
+    navigateToView(hash);
+  }
+
+  // Bind direct click handlers to all navigation tabs and drawer items
+  document.querySelectorAll('#main-nav-tabs .nav-link, .drawer-nav-item').forEach(link => {
+    link.addEventListener('click', (e) => {
+      const v = link.dataset.view || link.getAttribute('href')?.replace('#', '');
+      if (v) {
+        navigateToView(v);
+      }
+    });
+  });
 
   window.addEventListener('hashchange', handleRoute);
   handleRoute();
