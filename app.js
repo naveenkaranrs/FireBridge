@@ -103,7 +103,9 @@ function interpolateMultiColor(stops, t) {
 // --- WEB AUDIO API TELEMETRY SYNTHESIZER ---
 class FireBridgeAudio {
   constructor() {
-    this.enabled = true;
+    // Sound OFF by default; persist user choice across sessions
+    const saved = typeof localStorage !== 'undefined' ? localStorage.getItem('firebridge_sound_enabled') : null;
+    this.enabled = saved === 'true'; // Default is false (OFF)
     this.ctx = null;
   }
   init() {
@@ -138,6 +140,9 @@ class FireBridgeAudio {
   step() { this.beep(740, 'sine', 0.04, 0.02); }
   toggle() {
     this.enabled = !this.enabled;
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('firebridge_sound_enabled', this.enabled ? 'true' : 'false');
+    }
     return this.enabled;
   }
 }
@@ -339,14 +344,14 @@ function initRouter() {
         renderCalendar();
         renderAnalyticsChart();
       }
-      if (hash === 'orbit3d') {
-        setTimeout(() => initOrbit3DVisualizer(), 150);
-      }
-      if (hash === 'climatology') {
+      if (hash === 'labs' || hash === 'climatology') {
         setTimeout(() => {
           initClimateSimulator();
           renderAnomalyCharts();
         }, 150);
+      }
+      if (hash === 'orbit3d') {
+        setTimeout(() => initOrbit3DVisualizer(), 150);
       }
       if (hash === 'harmonization') {
         setTimeout(() => {
@@ -951,19 +956,38 @@ function renderBenchmarkGauge() {
   const badgeEl = document.getElementById('benchmark-status-badge');
   if (badgeEl) {
     badgeEl.className = 'benchmark-hazard-badge';
-    if (zScore >= 2.0) {
+    if (zScore >= 2.0 || exactPercentile >= 97) {
       badgeEl.classList.add('extreme');
-      badgeEl.textContent = 'EXTREME ANOMALY (Tier 5 • ' + exactPercentile + 'th percentile): ' + sign + diffPct.toFixed(1) + '% vs 2000–2025 Historical Median';
-    } else if (zScore >= 1.0 || currentVal > q3) {
+      badgeEl.textContent = 'EXTREME ANOMALY (Class 5 • ' + exactPercentile + 'th percentile): ' + sign + diffPct.toFixed(1) + '% vs 2000–2025 Historical Median';
+    } else if (zScore >= 1.5 || exactPercentile >= 90) {
+      badgeEl.classList.add('extreme');
+      badgeEl.textContent = 'HIGH ANOMALY (Class 4 • ' + exactPercentile + 'th percentile): ' + sign + diffPct.toFixed(1) + '% vs 2000–2025 Historical Median';
+    } else if (zScore >= 1.0 || exactPercentile >= 75) {
       badgeEl.classList.add('elevated');
-      badgeEl.textContent = 'ELEVATED ACTIVITY (Tier 3 • ' + exactPercentile + 'th percentile): ' + sign + diffPct.toFixed(1) + '% vs 2000–2025 Historical Median';
-    } else if (zScore >= 0.5) {
+      badgeEl.textContent = 'ELEVATED ACTIVITY (Class 3 • ' + exactPercentile + 'th percentile): ' + sign + diffPct.toFixed(1) + '% vs 2000–2025 Historical Median';
+    } else if (zScore >= 0.5 || exactPercentile >= 50) {
       badgeEl.classList.add('elevated');
-      badgeEl.textContent = 'MODERATE ACTIVITY (Tier 2 • ' + exactPercentile + 'th percentile): ' + sign + diffPct.toFixed(1) + '% vs 2000–2025 Historical Median';
+      badgeEl.textContent = 'MODERATE ACTIVITY (Class 2 • ' + exactPercentile + 'th percentile): ' + sign + diffPct.toFixed(1) + '% vs 2000–2025 Historical Median';
     } else {
       badgeEl.classList.add('normal');
-      badgeEl.textContent = 'NORMAL RANGE (' + exactPercentile + 'th percentile): ' + sign + diffPct.toFixed(1) + '% vs 2000–2025 Historical Median';
+      badgeEl.textContent = 'NORMAL RANGE (Class 1 • ' + exactPercentile + 'th percentile): ' + sign + diffPct.toFixed(1) + '% vs 2000–2025 Historical Median';
     }
+  }
+
+  // Update Provenance Badges across Benchmark and Calendar
+  const prov = (regionData.metadata && regionData.metadata.provenance) ? regionData.metadata.provenance : { data_source: 'synthetic demo' };
+  const isArchive = prov.data_source === 'FIRMS archive';
+  const bmProvEl = document.getElementById('bm-provenance-pill');
+  if (bmProvEl) {
+    bmProvEl.className = 'provenance-pill ' + (isArchive ? 'archive' : 'synthetic');
+    bmProvEl.textContent = isArchive ? 'FIRMS ARCHIVE' : 'SYNTHETIC DEMO DATA';
+    bmProvEl.title = isArchive ? 'Direct NASA FIRMS calibrated active fire archive' : 'Scientifically-modelled synthetic climatology';
+  }
+  const calProvEl = document.getElementById('cal-provenance-pill');
+  if (calProvEl) {
+    calProvEl.className = 'provenance-pill ' + (isArchive ? 'archive' : 'synthetic');
+    calProvEl.textContent = isArchive ? 'FIRMS ARCHIVE' : 'SYNTHETIC DEMO DATA';
+    calProvEl.title = isArchive ? 'Direct NASA FIRMS calibrated active fire archive' : 'Scientifically-modelled synthetic climatology';
   }
 
   const valEl = document.getElementById('bm-current-val');
@@ -1104,15 +1128,18 @@ function renderCalendar() {
   const p05 = allValues.length ? allValues[Math.floor(allValues.length * 0.05)] : minVal;
   const p95 = allValues.length ? allValues[Math.floor(allValues.length * 0.95)] : maxVal;
 
+  const legendMin = document.getElementById('cal-legend-min');
+  const legendMid = document.getElementById('cal-legend-mid');
   const legendMax = document.getElementById('cal-legend-max');
-  if (legendMax) {
-    let unitLabel = metric.toUpperCase();
-    if (metric === 'emissions') unitLabel = 'Tg CO₂';
-    else if (metric === 'fre') unitLabel = 'MJ';
-    else if (metric === 'zscore') unitLabel = 'σ';
-    const displayMax = (metric === 'emissions' || metric === 'zscore') ? maxVal.toFixed(2) : (maxVal < 5 ? maxVal.toFixed(2) : Math.round(maxVal).toLocaleString('en-US'));
-    legendMax.textContent = 'Extreme (' + displayMax + ' ' + unitLabel + ')';
-  }
+  let unitLabel = metric.toUpperCase();
+  if (metric === 'emissions') unitLabel = 'Tg';
+  else if (metric === 'fre') unitLabel = 'MJ';
+  else if (metric === 'zscore') unitLabel = 'σ';
+
+  const fmtTick = (v) => (metric === 'emissions' || metric === 'zscore') ? v.toFixed(2) : (v < 5 ? v.toFixed(2) : (v >= 1000 ? (v / 1000).toFixed(1) + 'k' : Math.round(v).toLocaleString('en-US')));
+  if (legendMin) legendMin.textContent = 'Min: ' + fmtTick(minVal);
+  if (legendMid) legendMid.textContent = 'Median: ' + fmtTick(allValues[Math.floor(allValues.length * 0.5)] || 0);
+  if (legendMax) legendMax.textContent = 'Max: ' + fmtTick(maxVal) + ' ' + unitLabel;
 
   for (let year = 2000; year <= 2026; year++) {
     const yLabel = document.createElement('div');
@@ -1126,6 +1153,10 @@ function renderCalendar() {
       const cellData = byYear[year] ? byYear[year][month] : null;
       const cell = document.createElement('div');
       cell.className = 'cal-cell';
+      cell.tabIndex = 0;
+      cell.setAttribute('role', 'gridcell');
+      cell.setAttribute('data-year', year);
+      cell.setAttribute('data-month', month);
 
       if (cellData) {
         const val = getCellValue(cellData);
@@ -1166,6 +1197,33 @@ function renderCalendar() {
           else if (val >= 1000) cell.textContent = (val / 1000).toFixed(1) + 'k';
           else cell.textContent = Math.round(val).toLocaleString('en-US');
         }
+
+        cell.setAttribute('aria-label', MONTH_NAMES[month - 1] + ' ' + year + ': ' + cell.textContent);
+        cell.addEventListener('keydown', (e) => {
+          let targetYear = year;
+          let targetMonth = month;
+          if (e.key === 'ArrowRight') {
+            e.preventDefault();
+            if (month === 12) { targetYear++; targetMonth = 1; } else { targetMonth++; }
+          } else if (e.key === 'ArrowLeft') {
+            e.preventDefault();
+            if (month === 1) { targetYear--; targetMonth = 12; } else { targetMonth--; }
+          } else if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            targetYear++;
+          } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            targetYear--;
+          } else if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            cell.click();
+            return;
+          } else {
+            return;
+          }
+          const nextCell = container.querySelector('.cal-cell[data-year="' + targetYear + '"][data-month="' + targetMonth + '"]');
+          if (nextCell) nextCell.focus();
+        });
 
         cell.addEventListener('mouseenter', () => {
           const inspector = document.getElementById('cell-inspector-preview');
@@ -2217,6 +2275,17 @@ function setupGlobalEvents() {
     renderCalendar();
   });
 
+  // Cell Number Display Toggle (Numbers vs Compact Color Blocks)
+  document.getElementById('btn-cal-toggle-numbers')?.addEventListener('click', (e) => {
+    const grid = document.getElementById('calendar-grid-container');
+    if (grid) {
+      grid.classList.toggle('compact-cells');
+      const isCompact = grid.classList.contains('compact-cells');
+      e.currentTarget.textContent = isCompact ? '■ Compact' : '# Numbers';
+      showToast(isCompact ? 'Compact Heatmap Mode' : 'Numeric Value Overlay Active', 'info');
+    }
+  });
+
   // Client-Side CSV & GeoJSON Exporters (100% compatible with GitHub Pages & offline deployment)
   function exportCurrentRegionCsv() {
     if (typeof audioFX !== 'undefined') audioFX.click();
@@ -2226,8 +2295,9 @@ function setupGlobalEvents() {
       showToast('Dataset loading, please wait...', 'warning');
       return;
     }
+    const prov = (regData.metadata && regData.metadata.provenance) ? regData.metadata.provenance : { data_source: 'synthetic demo' };
     const hotspots = regData.sample_hotspots || [];
-    let csv = "latitude,longitude,brightness,scan,track,acq_date,acq_time,satellite,instrument,confidence,version,bright_t31,frp,daynight,type\n";
+    let csv = `# FireBridge Earth Observation Harmonization Archive\n# Data-Provenance: ${prov.data_source.toUpperCase()}\n# Region: ${region}\n# Processing-Date: ${prov.processing_date || '2026-11-12'}\nlatitude,longitude,brightness,scan,track,acq_date,acq_time,satellite,instrument,confidence,version,bright_t31,frp,daynight,type\n`;
     hotspots.forEach(pt => {
       const lat = pt.latitude || 0;
       const lon = pt.longitude || 0;
@@ -2250,7 +2320,7 @@ function setupGlobalEvents() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    showToast(`Harmonized CSV downloaded (${hotspots.length.toLocaleString('en-US')} records)`, 'success');
+    showToast(`Harmonized CSV downloaded (${hotspots.length.toLocaleString('en-US')} records [${prov.data_source.toUpperCase()}])`, 'success');
   }
 
   function exportCurrentRegionGeoJson() {
@@ -2261,12 +2331,14 @@ function setupGlobalEvents() {
       showToast('Dataset loading, please wait...', 'warning');
       return;
     }
+    const prov = (regData.metadata && regData.metadata.provenance) ? regData.metadata.provenance : { data_source: 'synthetic demo' };
     const hotspots = regData.sample_hotspots || [];
     const geojson = {
       type: "FeatureCollection",
       metadata: {
         platform: "FireBridge NASA FIRMS Harmonization Engine",
         region: region,
+        provenance: prov,
         generated_utc: new Date().toISOString()
       },
       features: hotspots.map(pt => ({
@@ -2292,8 +2364,126 @@ function setupGlobalEvents() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    showToast(`AOI GeoJSON downloaded (${hotspots.length.toLocaleString('en-US')} features)`, 'success');
+    showToast(`AOI GeoJSON downloaded (${hotspots.length.toLocaleString('en-US')} features [${prov.data_source.toUpperCase()}])`, 'success');
   }
+
+  // One-Page Executive Fire Intelligence Brief Generator
+  function openFireBriefModal() {
+    if (typeof audioFX !== 'undefined') audioFX.success();
+    const briefModal = document.getElementById('modal-fire-brief');
+    if (!briefModal) return;
+
+    const region = state.currentRegion || 'california';
+    const regData = (state.database && state.database[region]) || (state.database && state.database['california']);
+    if (!regData) return;
+
+    const meta = regData.metadata || {};
+    const prov = meta.provenance || { data_source: 'synthetic demo' };
+    const timeline = regData.timeline || [];
+
+    const coordsEl = document.getElementById('brief-aoi-coords');
+    if (coordsEl) coordsEl.textContent = `AOI: ${meta.name || region} [${(meta.bounds || []).join(', ')}] • Generated ${new Date().toISOString().replace('T', ' ').substring(0, 19)} UTC`;
+    const genDateEl = document.getElementById('brief-gen-date');
+    if (genDateEl) genDateEl.textContent = new Date().toISOString().substring(0, 10);
+    
+    const badgeEl = document.getElementById('brief-provenance-badge');
+    const isArchive = prov.data_source === 'FIRMS archive';
+    if (badgeEl) {
+      badgeEl.className = 'provenance-pill ' + (isArchive ? 'archive' : 'synthetic');
+      badgeEl.textContent = isArchive ? 'FIRMS ARCHIVE' : 'SYNTHETIC DEMO DATA';
+    }
+    const footerProv = document.getElementById('brief-footer-provenance');
+    if (footerProv) footerProv.textContent = isArchive ? 'NASA FIRMS Archive Verified' : 'Modelled Synthetic Demo Data';
+
+    const latestEntry = timeline[timeline.length - 1] || {};
+    const currentValEl = document.getElementById('brief-current-val');
+    if (currentValEl) currentValEl.textContent = (latestEntry.harmonized_count || 0).toLocaleString('en-US') + ' events';
+
+    const histEntries = timeline.filter(d => d.month === (latestEntry.month || 10));
+    const counts = histEntries.map(d => d.harmonized_count).sort((a, b) => a - b);
+    const median = counts[Math.floor(counts.length * 0.5)] || 1;
+    const currentVal = latestEntry.harmonized_count || 0;
+    const diffPct = ((currentVal / median) - 1) * 100;
+    const sign = diffPct >= 0 ? '+' : '';
+
+    const vsMedianEl = document.getElementById('brief-vs-median');
+    if (vsMedianEl) vsMedianEl.textContent = `${sign}${diffPct.toFixed(1)}% vs Historical Median (${median.toLocaleString('en-US')})`;
+
+    const countBelow = counts.filter(c => c < currentVal).length;
+    const countEqual = counts.filter(c => c === currentVal).length;
+    const percentile = Math.min(100, Math.max(0, Math.round(((countBelow + 0.5 * countEqual) / (counts.length || 1)) * 100)));
+
+    const classValEl = document.getElementById('brief-class-val');
+    if (classValEl) {
+      if (percentile >= 97) classValEl.textContent = 'Class 5 • Extreme Anomaly';
+      else if (percentile >= 90) classValEl.textContent = 'Class 4 • High Anomaly';
+      else if (percentile >= 75) classValEl.textContent = 'Class 3 • Elevated Activity';
+      else if (percentile >= 50) classValEl.textContent = 'Class 2 • Moderate Activity';
+      else classValEl.textContent = 'Class 1 • Normal Range';
+    }
+    const pctValEl = document.getElementById('brief-percentile-val');
+    if (pctValEl) pctValEl.textContent = `${percentile}th baseline percentile`;
+
+    // Peak Season
+    const peakSeasonEl = document.getElementById('brief-peak-season');
+    if (peakSeasonEl && meta.peak_months) {
+      const pNames = meta.peak_months.map(m => MONTH_NAMES[m - 1].substring(0, 3));
+      peakSeasonEl.textContent = pNames[0] + ' – ' + pNames[pNames.length - 1];
+    }
+
+    // Top 5 historic fire years
+    const yearlyTotals = {};
+    timeline.forEach(d => {
+      yearlyTotals[d.year] = (yearlyTotals[d.year] || 0) + (d.harmonized_count || 0);
+    });
+    const sortedYears = Object.entries(yearlyTotals).sort((a, b) => b[1] - a[1]).slice(0, 5);
+    const tbody = document.getElementById('brief-top-years-tbody');
+    if (tbody) {
+      tbody.innerHTML = sortedYears.map(([yr, tot], idx) => {
+        const isExtreme = (meta.extreme_years || []).includes(parseInt(yr));
+        const sevTag = isExtreme ? '<span style="color:#ef4444; font-weight:700;">Megafire Season</span>' : '<span style="color:#38bdf8;">High Activity</span>';
+        return `<tr><td>#${idx + 1}</td><td><strong>${yr}</strong></td><td>${Math.round(tot).toLocaleString('en-US')} events</td><td>${sevTag}</td></tr>`;
+      }).join('');
+    }
+
+    // Mini heatmap canvas
+    const canvas = document.getElementById('brief-mini-calendar');
+    if (canvas) {
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const startYear = 2000;
+      const endYear = 2026;
+      const numYears = endYear - startYear + 1;
+      const cellW = (canvas.width - 24) / 12;
+      const cellH = (canvas.height - 10) / numYears;
+
+      const allCounts = timeline.map(d => d.harmonized_count).sort((a, b) => a - b);
+      const p95 = allCounts[Math.floor(allCounts.length * 0.95)] || 1;
+
+      timeline.forEach(d => {
+        const col = d.month - 1;
+        const row = d.year - startYear;
+        if (col >= 0 && col < 12 && row >= 0 && row < numYears) {
+          const norm = Math.min(1, Math.max(0, (d.harmonized_count || 0) / p95));
+          const rgb = norm < 0.33 ? [16, 44, 87] : norm < 0.66 ? [245, 158, 11] : [239, 68, 68];
+          ctx.fillStyle = `rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`;
+          ctx.fillRect(12 + col * cellW, 5 + row * cellH, cellW - 1, cellH - 0.5);
+        }
+      });
+    }
+
+    briefModal.style.display = 'flex';
+  }
+
+  function closeFireBriefModal() {
+    const briefModal = document.getElementById('modal-fire-brief');
+    if (briefModal) briefModal.style.display = 'none';
+  }
+
+  document.getElementById('btn-quick-fire-brief')?.addEventListener('click', openFireBriefModal);
+  document.getElementById('btn-export-brief-modal')?.addEventListener('click', openFireBriefModal);
+  document.getElementById('btn-print-brief')?.addEventListener('click', () => window.print());
+  document.querySelectorAll('.btn-close-brief').forEach(b => b.addEventListener('click', closeFireBriefModal));
 
   // Analytics Chart Tabs
   document.getElementById('analytics-chart-tabs')?.addEventListener('click', (e) => {
@@ -2437,6 +2627,10 @@ function setupGlobalEvents() {
   const soundStatus = document.getElementById('sound-status');
   const soundIcon = document.getElementById('sound-icon');
   if (soundToggleBtn) {
+    if (soundStatus) soundStatus.textContent = audioFX.enabled ? 'Sound ON' : 'Sound OFF';
+    if (soundIcon) soundIcon.textContent = audioFX.enabled ? '🔊' : '🔇';
+    soundToggleBtn.classList.toggle('muted', !audioFX.enabled);
+
     soundToggleBtn.addEventListener('click', () => {
       const isEnabled = audioFX.toggle();
       if (soundStatus) soundStatus.textContent = isEnabled ? 'Sound ON' : 'Sound OFF';
@@ -3648,7 +3842,7 @@ function initJudgeGuidedTour() {
       stat: '+34 Days Season Extension',
       solution: '27.2 Tg CO₂ Atmospheric Budget',
       progress: 100,
-      narrative: '<strong>Operational Impact:</strong> FireBridge enables a unified 26-year continuous record (2000–2026). Firefighters track true perimeter growth; disaster managers receive <strong>Copernicus GWIS Tier 5 Anomaly warnings</strong>; and climate researchers calculate accurate biomass burning carbon budgets without sensor distortion.',
+      narrative: '<strong>Operational Impact:</strong> FireBridge enables a unified 26-year continuous record (2000–2026). Incident commanders receive <strong>FireBridge Class 5 Extreme Anomaly warnings</strong> (baseline percentile rank), and can instantly compile a certified executive Fire Brief.',
       action: () => {
         window.location.hash = '#workbench';
         setTimeout(() => {
@@ -3694,6 +3888,10 @@ function initJudgeGuidedTour() {
   }
 
   function startAutoPlay() {
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      isAutoPlaying = false;
+      return;
+    }
     isAutoPlaying = true;
     if (autoplayBtn) autoplayBtn.textContent = '⏸ Pause (8s)';
     if (autoPlayTimer) clearInterval(autoPlayTimer);
@@ -3742,6 +3940,7 @@ function initJudgeGuidedTour() {
         renderPhase(currentPhaseIndex + 1);
       } else {
         closeTour();
+        openFireBriefModal();
       }
     });
   }
@@ -4119,7 +4318,7 @@ function initOrbit3DVisualizer() {
     satellites: { terra: terraSat, aqua: aquaSat, snpp: snppSat, noaa20: noaa20Sat },
     swathCones: [terraSat.cone, aquaSat.cone, snppSat.cone, noaa20Sat.cone],
     cameraMode: 'free',
-    isRotating: true,
+    isRotating: !(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches),
     cinematicAngle: 0,
     animId: null
   };

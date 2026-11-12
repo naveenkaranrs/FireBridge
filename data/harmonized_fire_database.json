@@ -21,7 +21,15 @@
         2018,
         2020,
         2021
-      ]
+      ],
+      "provenance": {
+        "data_source": "FIRMS archive",
+        "period": "2000-01 to 2026-10",
+        "products": "MODIS C6.1 (Terra/Aqua), VIIRS 375m (S-NPP/NOAA-20/NOAA-21)",
+        "processing_date": "2026-11-12",
+        "qc_applied": "Confidence filter (MODIS>=30, VIIRS n/h), static industrial thermal filter, daily footprint deduplication",
+        "region_coverage": "Northern California / Sierra Nevada [-124.5, 36.5, -119.0, 42.0]"
+      }
     },
     "model_params": {
       "count_slope": 0.3298,
@@ -32345,7 +32353,14 @@
         2019,
         2020,
         2024
-      ]
+      ],
+      "provenance": {
+        "data_source": "synthetic demo",
+        "period": "2000-01 to 2026-10",
+        "products": "Climatological Model (MODIS+VIIRS Synthesized)",
+        "processing_date": "2026-11-12",
+        "region_coverage": "Southern Amazon Basin (Deforestation Arc) [-68,-14,-50,-5]"
+      }
     },
     "model_params": {
       "count_slope": 0.3298,
@@ -59649,7 +59664,14 @@
         2009,
         2019,
         2020
-      ]
+      ],
+      "provenance": {
+        "data_source": "synthetic demo",
+        "period": "2000-01 to 2026-10",
+        "products": "Climatological Model (MODIS+VIIRS Synthesized)",
+        "processing_date": "2026-11-12",
+        "region_coverage": "Southeastern Australia (Black Summer Zone) [145,-39,153.5,-28]"
+      }
     },
     "model_params": {
       "count_slope": 0.3298,
@@ -87052,7 +87074,14 @@
         2019,
         2020,
         2021
-      ]
+      ],
+      "provenance": {
+        "data_source": "synthetic demo",
+        "period": "2000-01 to 2026-10",
+        "products": "Climatological Model (MODIS+VIIRS Synthesized)",
+        "processing_date": "2026-11-12",
+        "region_coverage": "Boreal Siberia / Sakha Republic [115,58,135,68]"
+      }
     },
     "model_params": {
       "count_slope": 0.3298,
@@ -110536,7 +110565,14 @@
         2017,
         2021,
         2023
-      ]
+      ],
+      "provenance": {
+        "data_source": "synthetic demo",
+        "period": "2000-01 to 2026-10",
+        "products": "Climatological Model (MODIS+VIIRS Synthesized)",
+        "processing_date": "2026-11-12",
+        "region_coverage": "Mediterranean Basin (Greece & Iberia) [-9.5,36,26,42.5]"
+      }
     },
     "model_params": {
       "count_slope": 0.3298,
@@ -133697,7 +133733,14 @@
       "extreme_years": [
         2020,
         2024
-      ]
+      ],
+      "provenance": {
+        "data_source": "synthetic demo",
+        "period": "2000-01 to 2026-10",
+        "products": "Climatological Model (MODIS+VIIRS Synthesized)",
+        "processing_date": "2026-11-12",
+        "region_coverage": "Pantanal Wetland Biome [-58.5,-22,-55,-16]"
+      }
     },
     "model_params": {
       "count_slope": 0.3298,

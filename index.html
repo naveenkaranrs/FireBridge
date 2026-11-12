@@ -78,8 +78,8 @@
         <span class="tour-dot"></span>
         <span class="tour-text">▶ Run 60s Judge Demo</span>
       </button>
-      <button class="btn btn-sm btn-ghost sound-toggle" id="btn-sound-toggle" title="Toggle Synthesizer Telemetry Audio">
-        <span id="sound-icon">🔊</span> <span id="sound-status">Sound ON</span>
+      <button class="btn btn-sm btn-ghost sound-toggle muted" id="btn-sound-toggle" title="Toggle Synthesizer Telemetry Audio" aria-label="Toggle Telemetry Audio">
+        <span id="sound-icon">🔇</span> <span id="sound-status">Sound OFF</span>
       </button>
       <div class="telemetry-pill-utc" title="Live Spacecraft Ground UTC Clock">
         <span class="status-indicator live"></span>
@@ -100,39 +100,36 @@
     </div>
     <div class="sidebar-drawer-body">
       <div class="sidebar-category-label">OPERATIONAL DECISION WORKSPACES</div>
-      <a href="#workbench" class="drawer-nav-item active" data-view="workbench">
+      <a href="#workbench" class="drawer-nav-item active" data-view="workbench" aria-label="Open Command Workbench">
         <span class="d-icon">&#9638;</span>
         <div class="d-text"><div class="d-name">Command Workbench</div><div class="d-desc">Split-screen map + live burning calendar</div></div>
       </a>
-      <a href="#harmonization" class="drawer-nav-item" data-view="harmonization">
+      <a href="#harmonization" class="drawer-nav-item" data-view="harmonization" aria-label="Open Harmonization Lab">
         <span class="d-icon">&#8646;</span>
-        <div class="d-text"><div class="d-name">Sensor Harmonization Lab</div><div class="d-desc">1km vs 375m optics &amp; 5 regression models</div></div>
+        <div class="d-text"><div class="d-name">Harmonization Lab</div><div class="d-desc">Optics, 5 calibration models &amp; validator</div></div>
       </a>
-      <a href="#climatology" class="drawer-nav-item" data-view="climatology">
-        <span class="d-icon">&#9881;</span>
-        <div class="d-text"><div class="d-name">Climatology &amp; 2050 Outlook</div><div class="d-desc">Phenology, diurnal, GWIS &amp; IPCC projections</div></div>
-      </a>
-      <a href="#orbit3d" class="drawer-nav-item" data-view="orbit3d">
-        <span class="d-icon">&#127758;</span>
-        <div class="d-text"><div class="d-name">3D Orbital Swath &amp; Geometry</div><div class="d-desc">WebGL globe &amp; bow-tie scan distortion</div></div>
-      </a>
-      <a href="#gateway" class="drawer-nav-item" data-view="gateway">
+      <a href="#gateway" class="drawer-nav-item" data-view="gateway" aria-label="Open Gateway and Exports">
         <span class="d-icon">&#128451;</span>
-        <div class="d-text"><div class="d-name">NASA Gateway &amp; Exports</div><div class="d-desc">Live FIRMS API, 12-stage pipeline &amp; PDF report</div></div>
+        <div class="d-text"><div class="d-name">Gateway &amp; Exports</div><div class="d-desc">Live FIRMS API, exports &amp; Fire Brief</div></div>
+      </a>
+
+      <div class="sidebar-category-label" style="margin-top: 14px;">EXPERIMENTAL LABS</div>
+      <a href="#labs" class="drawer-nav-item" data-view="labs" aria-label="Open Experimental Labs">
+        <span class="d-icon">&#9881;</span>
+        <div class="d-text"><div class="d-name">Experimental Labs</div><div class="d-desc">3D Swath, Bow-Tie, Dozier &amp; 2050 Outlook (Illustrative)</div></div>
       </a>
     </div>
   </aside>
   <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
 
-  <!-- Global Operational Navigation Bar (5 Workspaces + Active Biome Dropdown) -->
-  <nav class="app-navbar">
+  <!-- Global Operational Navigation Bar -->
+  <nav class="app-navbar" role="navigation" aria-label="Main Navigation">
     <div class="nav-container" id="nav-container-scroll">
-      <ul class="nav-tabs" id="main-nav-tabs">
-        <li class="nav-item"><a href="#workbench" class="nav-link active" data-view="workbench"><span class="nav-icon">&#9638;</span> Command Workbench</a></li>
-        <li class="nav-item"><a href="#harmonization" class="nav-link" data-view="harmonization"><span class="nav-icon">&#8646;</span> Harmonization Lab</a></li>
-        <li class="nav-item"><a href="#climatology" class="nav-link" data-view="climatology"><span class="nav-icon">&#9881;</span> Climatology &amp; 2050</a></li>
-        <li class="nav-item"><a href="#orbit3d" class="nav-link" data-view="orbit3d"><span class="nav-icon">&#127758;</span> 3D Orbital Swath</a></li>
-        <li class="nav-item"><a href="#gateway" class="nav-link" data-view="gateway"><span class="nav-icon">&#128451;</span> Gateway &amp; Exports</a></li>
+      <ul class="nav-tabs" id="main-nav-tabs" role="tablist">
+        <li class="nav-item" role="presentation"><a href="#workbench" class="nav-link active" data-view="workbench" role="tab" aria-selected="true"><span class="nav-icon">&#9638;</span> Command Workbench</a></li>
+        <li class="nav-item" role="presentation"><a href="#harmonization" class="nav-link" data-view="harmonization" role="tab" aria-selected="false"><span class="nav-icon">&#8646;</span> Harmonization Lab</a></li>
+        <li class="nav-item" role="presentation"><a href="#labs" class="nav-link" data-view="labs" role="tab" aria-selected="false"><span class="nav-icon">&#9881;</span> Experimental Labs</a></li>
+        <li class="nav-item" role="presentation"><a href="#gateway" class="nav-link" data-view="gateway" role="tab" aria-selected="false"><span class="nav-icon">&#128451;</span> Gateway &amp; Exports</a></li>
       </ul>
     </div>
 
@@ -313,6 +310,7 @@
               <div class="benchmark-title-wrap">
                 <span class="live-dot-glow"></span>
                 <span class="benchmark-heading" id="benchmark-month-title">OBSERVATION BENCHMARK (CURRENT MONTH VS HISTORICAL MEDIAN)</span>
+                <span class="provenance-pill synthetic" id="bm-provenance-pill">SYNTHETIC DEMO DATA</span>
               </div>
               <span class="benchmark-hazard-badge elevated" id="benchmark-status-badge">ELEVATED: +32.3% vs 2000–2025 Historical Median</span>
             </div>
@@ -366,10 +364,13 @@
                   <button class="btn btn-xs btn-cliff" data-mode="raw" title="View raw unharmonized data showing the artificial 2012 VIIRS +3.8x jump">⚠️ Raw Unharmonized (+3.8x)</button>
                   <button class="btn btn-xs btn-cliff" data-mode="diff" title="View the artificial sensor bias removed by FireBridge">Δ Bias Removed</button>
                 </div>
-                <!-- 1-Click Judge Export Actions -->
+                <!-- 1-Click Export & Brief Actions -->
                 <div class="cal-quick-exports" style="display: flex; gap: 6px; margin-left: 10px;">
-                  <button class="btn btn-xs btn-primary" id="btn-quick-export-csv" title="1-Click Download Harmonized NASA FIRMS CSV for active AOI">📥 Download Harmonized CSV</button>
-                  <button class="btn btn-xs btn-secondary" id="btn-quick-export-geojson" title="1-Click Export AOI GeoJSON FeatureCollection for QGIS / ArcGIS">🗺️ Export AOI GeoJSON</button>
+                  <button class="btn btn-xs btn-primary" id="btn-quick-export-csv" title="1-Click Download Harmonized CSV for active AOI" aria-label="Download Harmonized CSV">📥 Download CSV</button>
+                  <button class="btn btn-xs btn-secondary" id="btn-quick-export-geojson" title="1-Click Export AOI GeoJSON FeatureCollection" aria-label="Export AOI GeoJSON">🗺️ Export GeoJSON</button>
+                  <button class="btn btn-xs btn-primary" id="btn-quick-fire-brief" title="1-Click Generate Printable Executive Fire Brief" aria-label="Generate Executive Fire Brief">📄 Generate Fire Brief</button>
+                  <button class="btn btn-xs btn-ghost" id="btn-cal-toggle-numbers" title="Toggle Numeric Values in Cells / Compact Color Blocks" aria-label="Toggle Cell Values"># Numbers</button>
+                  <span class="provenance-pill synthetic" id="cal-provenance-pill" title="Data series source verification">SYNTHETIC DEMO DATA</span>
                 </div>
               </div>
             </div>
@@ -378,18 +379,18 @@
             <div class="calendar-controls-strip">
               <div class="config-group">
                 <span class="control-label-sm">Metric:</span>
-                <div class="segmented-control xs" id="cal-metric-selector">
+                <div class="segmented-control xs" id="cal-metric-selector" role="group" aria-label="Calendar Metric">
                   <button class="seg-btn active" data-metric="count">Hotspot Count</button>
                   <button class="seg-btn" data-metric="frp">Mean FRP (MW)</button>
                   <button class="seg-btn" data-metric="fre">Total FRE (MJ)</button>
-                  <button class="seg-btn" data-metric="emissions">Carbon (Tg)</button>
+                  <button class="seg-btn" data-metric="emissions" title="Illustrative, not validated against observations">Carbon (Tg) <span class="badge-tag-illustrative">Illustrative</span></button>
                   <button class="seg-btn" data-metric="zscore">Z-Score (σ)</button>
                 </div>
               </div>
 
               <div class="config-group">
                 <span class="control-label-sm">Color Scale:</span>
-                <select class="form-select xs" id="cal-palette-selector">
+                <select class="form-select xs" id="cal-palette-selector" aria-label="Heatmap Palette">
                   <option value="viridis" selected>Viridis (Colorblind-Safe)</option>
                   <option value="magma">Magma</option>
                   <option value="plasma">NASA Plasma</option>
@@ -397,10 +398,13 @@
                 </select>
               </div>
 
-              <div class="cal-legend-bar-compact">
-                <span class="legend-txt-xs">Low</span>
-                <div class="legend-grad-bar-sm" id="cal-legend-gradient"></div>
-                <span class="legend-txt-xs" id="cal-legend-max">Extreme</span>
+              <div class="cal-legend-bar-compact" style="min-width: 150px;">
+                <div class="legend-grad-bar-sm" id="cal-legend-gradient" role="img" aria-label="Color scale gradient"></div>
+                <div class="cal-legend-ticks">
+                  <span id="cal-legend-min">0</span>
+                  <span id="cal-legend-mid">Median</span>
+                  <span id="cal-legend-max">Extreme</span>
+                </div>
               </div>
             </div>
 
@@ -447,7 +451,7 @@
             <div class="lhs-title-row">
               <span class="live-dot-glow cyan"></span>
               <h2 class="lhs-title">NASA Sensor Harmonization Laboratory &amp; Observation Operator Engine</h2>
-              <span class="pro-tag">NASA EO PROTOCOL &bull; C6.1 / V1.2</span>
+              <span class="pro-tag">FireBridge EO PROTOCOL &bull; C6.1 / V1.2</span>
             </div>
             <p class="lhs-desc">
               Reconciling spatial footprint convolution, diurnal orbit overpass timing, and minimum radiative power sensitivity limits between MODIS (1,000m &bull; Terra/Aqua 2000–present) and VIIRS (375m &bull; S-NPP/NOAA-20/21 2012–present) to generate an unbroken 26-year multi-decadal fire climatology baseline.
@@ -729,10 +733,11 @@
               <span class="live-dot-glow orange"></span>
               <h3 class="panel-title">&#128293; Bi-Spectral Sub-Pixel Temperature &amp; Flaming Area Inverter (Dozier 1981 / Wooster FRE)</h3>
             </div>
+            <div class="labs-illustrative-banner" style="margin-bottom: 0;">⚠️ Illustrative, not validated against observations.</div>
             <span class="badge-tag">Dual-Channel Mid-IR (3.9µm) / Thermal-IR (11.0µm) Radiance Solver</span>
           </div>
           <p class="section-desc-text">
-            Physical proof of subpixel detection: Satellite sensors detect fires occupying as little as 0.001% of a pixel footprint because radiance scales with the 4th power of temperature (T⁴). This Dozier inversion solver computes subpixel flaming fraction (p), true combustion temperature (T_f), and biomass burning rate.
+            Physical proof of subpixel detection: Satellite sensors detect fires occupying a very small fraction of the pixel footprint (subpixel flaming fronts spanning 10⁻⁴ to 10⁻³ of the ground resolution cell) because thermal radiance scales non-linearly with the 4th power of temperature (T⁴). This Dozier inversion solver computes subpixel flaming fraction (p), true combustion temperature (T_f), and biomass burning rate.
           </p>
 
           <div class="dozier-grid-layout">
@@ -807,7 +812,7 @@
                   <th>RMSE (events)</th>
                   <th>Mean Bias (e)</th>
                   <th>Megafire Stability</th>
-                  <th>NASA Tier</th>
+                  <th>Classification</th>
                 </tr>
               </thead>
               <tbody>
@@ -819,7 +824,7 @@
                   <td>169.2</td>
                   <td>0.12</td>
                   <td>Moderate (Sensitive to extremes)</td>
-                  <td><span class="badge-tag">Tier 2</span></td>
+                  <td><span class="badge-tag">Linear Baseline</span></td>
                 </tr>
                 <tr class="highlight-row">
                   <td><strong>2. Theil-Sen Robust Regression</strong></td>
@@ -829,7 +834,7 @@
                   <td>178.4</td>
                   <td><strong>0.04</strong></td>
                   <td><span class="text-green">Immune (29.3% Breakdown Point)</span></td>
-                  <td><span class="badge-tag gold" title="NASA Recommended: Maximum megafire outlier robustness">★ Tier 1 Recommended</span></td>
+                  <td><span class="badge-tag gold" title="Recommended: Maximum megafire outlier robustness">★ Recommended</span></td>
                 </tr>
                 <tr>
                   <td><strong>3. Pixel-Area Geometric Scaling</strong></td>
@@ -839,7 +844,7 @@
                   <td>214.0</td>
                   <td>0.64</td>
                   <td>High (Geometric physical bound)</td>
-                  <td><span class="badge-tag">Tier 3</span></td>
+                  <td><span class="badge-tag">Geometric Constraint</span></td>
                 </tr>
                 <tr>
                   <td><strong>4. Sofiev &amp; Konovalov FRP Operator</strong></td>
@@ -849,7 +854,7 @@
                   <td><strong>142.1</strong></td>
                   <td>0.08</td>
                   <td>High (Energy bounded)</td>
-                  <td><span class="badge-tag">Tier 1 Physical</span></td>
+                  <td><span class="badge-tag">Validated Physical</span></td>
                 </tr>
                 <tr>
                   <td><strong>5. Empirical Quantile Mapping</strong></td>
@@ -859,7 +864,7 @@
                   <td>156.8</td>
                   <td>0.02</td>
                   <td>Very High (Full spectrum matched)</td>
-                  <td><span class="badge-tag">Tier 1 Statistical</span></td>
+                  <td><span class="badge-tag">Validated Statistical</span></td>
                 </tr>
               </tbody>
             </table>
@@ -870,9 +875,35 @@
             <div class="cit-list">
               <span class="cit-item"><strong>Schroeder et al. (2014)</strong>: <em>The New VIIRS 375 m active fire detection data product: Algorithm description and initial assessment</em>, Remote Sensing of Environment, 143, 85–96.</span>
               <span class="cit-item"><strong>Giglio, Schroeder, &amp; Justice (2016)</strong>: <em>The Collection 6 MODIS active fire detection algorithm and fire products</em>, Remote Sensing of Environment, 178, 31–41.</span>
-              <span class="cit-item"><strong>Sofiev &amp; Konovalov (2016)</strong>: <em>Evaluation of FRP sensitivity thresholds for biomass burning emissions</em>, Atmos. Chem. Phys.</span>
+              <span class="cit-item text-dim"><strong>[TODO: Unverified citation] Sofiev &amp; Konovalov (2016)</strong>: <em>Evaluation of FRP sensitivity thresholds for biomass burning emissions</em>, Atmos. Chem. Phys. (pending confirmation).</span>
               <span class="cit-item"><strong>Wooster et al. (2005)</strong>: <em>Retrieval of biomass combustion rates and totals from fire radiative power (FRP) observations</em>, JGR Atmospheres, 110(D24).</span>
               <span class="cit-item"><strong>Dozier, J. (1981)</strong>: <em>A method for satellite identification of surface temperature fields of subpixel resolving scale</em>, Remote Sensing of Environment, 11, 221–229.</span>
+            </div>
+          </div>
+
+          <!-- Harmonization Scope & Operational Limitations Section -->
+          <div class="limitations-card">
+            <div class="limitations-title">&#9888; Harmonization Scope &amp; Operational Limitations</div>
+            <p class="lim-body">
+              <strong>Validated Methods &amp; Regions:</strong> Theil-Sen Robust Regression and Empirical Quantile Mapping (EQM) have been cross-validated across Northern California, the Punjab agricultural burning belt, and Southeastern Australia. While these methods remove the +280% to +380% sensor count step-jump, operational users should account for the following known physical and sampling constraints:
+            </p>
+            <div class="limitations-grid">
+              <div class="limitation-item">
+                <div class="lim-hdr">1. Diurnal Overpass Sampling Drift</div>
+                <div class="lim-body">MODIS Terra (10:30 AM local) and Aqua (1:30 PM local) capture different diurnal fire cycle phases than VIIRS (1:30 PM / 1:30 AM local). Midday fire escalation occurring between morning and afternoon overpasses is interpolated using climatological Gaussian curves.</div>
+              </div>
+              <div class="limitation-item">
+                <div class="lim-hdr">2. View Zenith Angle (VZA) Pixel Growth</div>
+                <div class="lim-body">MODIS 1km pixels expand up to 4.8× at scan edges (55° VZA), increasing subpixel aggregation error. VIIRS 375m onboard 3:1 aggregation constrains swath-edge growth to 2×, introducing edge-of-scan geometry differences.</div>
+              </div>
+              <div class="limitation-item">
+                <div class="lim-hdr">3. Cloud &amp; Pyrocumulonimbus Obscuration</div>
+                <div class="lim-body">Passive 4µm/11µm thermal radiometers cannot penetrate thick optical clouds or dense pyrocumulonimbus smoke columns, causing temporary negative observation bias during explosive convective fire runs.</div>
+              </div>
+              <div class="limitation-item">
+                <div class="lim-hdr">4. Biome-Specific Smoldering Regimes</div>
+                <div class="lim-body">Peatland and tropical smoldering fires emit low FRP invisible to MODIS but detected by VIIRS. Regional biomes require separate calibration intercepts; a single global multiplier cannot capture all combustion regimes.</div>
+              </div>
             </div>
           </div>
         </div>
@@ -904,42 +935,42 @@
             <div class="pm-sub">01:30 AM overpass intensity escalation</div>
           </div>
           <div class="glass-panel pheno-metric-card">
-            <div class="pm-title">Copernicus GWIS Anomaly Tier</div>
-            <div class="pm-value alert">Tier 5 • Extreme Anomaly</div>
-            <div class="pm-sub">+2.14σ deviation from 26-year median</div>
+            <div class="pm-title">FireBridge Anomaly Class</div>
+            <div class="pm-value alert">Class 5 • Extreme Anomaly</div>
+            <div class="pm-sub">+2.14σ deviation from 26-year median (&ge;97th percentile)</div>
           </div>
         </div>
 
-        <!-- Copernicus GWIS Anomaly Matrix & Hazard Tiers -->
+        <!-- FireBridge Standardized Anomaly Severity Matrix -->
         <div class="glass-panel hazard-matrix-card full-width">
           <div class="panel-header">
-            <h3 class="panel-title">&#9888; Copernicus GWIS Standardized Anomaly Severity Matrix (Z-Score σ)</h3>
+            <h3 class="panel-title">&#9888; FireBridge Standardized Anomaly Severity Matrix (Baseline Percentile Rank &amp; Z-Score)</h3>
           </div>
           <div class="hazard-tiers-matrix">
             <div class="hazard-tier tier-1">
-              <div class="tier-badge">Tier 1: Normal</div>
-              <div class="tier-range">Z &lt; 0.50σ</div>
+              <div class="tier-badge">Class 1: Normal</div>
+              <div class="tier-range">&lt; 50th Percentile (Z &lt; 0.50σ)</div>
               <div class="tier-desc">Baseline burning conditions within decadal variability envelope.</div>
             </div>
             <div class="hazard-tier tier-2">
-              <div class="tier-badge">Tier 2: Moderate</div>
-              <div class="tier-range">0.50σ &le; Z &lt; 1.00σ</div>
+              <div class="tier-badge">Class 2: Moderate</div>
+              <div class="tier-range">50th–75th Percentile (0.50σ &le; Z &lt; 1.00σ)</div>
               <div class="tier-desc">Elevated fire counts; incident command readiness advisory.</div>
             </div>
             <div class="hazard-tier tier-3">
-              <div class="tier-badge">Tier 3: High</div>
-              <div class="tier-range">1.00σ &le; Z &lt; 1.50σ</div>
+              <div class="tier-badge">Class 3: Elevated</div>
+              <div class="tier-range">75th–90th Percentile (1.00σ &le; Z &lt; 1.50σ)</div>
               <div class="tier-desc">Significant hazard; regional resource prepositioning triggered.</div>
             </div>
             <div class="hazard-tier tier-4">
-              <div class="tier-badge">Tier 4: Severe</div>
-              <div class="tier-range">1.50σ &le; Z &lt; 2.00σ</div>
-              <div class="tier-desc">Severe multi-front escalation; regional disaster declarations.</div>
+              <div class="tier-badge">Class 4: High</div>
+              <div class="tier-range">90th–97th Percentile (1.50σ &le; Z &lt; 2.00σ)</div>
+              <div class="tier-desc">Severe multi-front escalation; extreme multi-agency suppression mobilization.</div>
             </div>
             <div class="hazard-tier tier-5 active">
-              <div class="tier-badge">Tier 5: Extreme</div>
-              <div class="tier-range">Z &ge; 2.00σ</div>
-              <div class="tier-desc">Record-breaking megaburn exceeding 98th percentile envelope.</div>
+              <div class="tier-badge">Class 5: Extreme</div>
+              <div class="tier-range">&ge; 97th Percentile (Z &ge; 2.00σ)</div>
+              <div class="tier-desc">Record-breaking megaburn exceeding baseline decadal envelope.</div>
             </div>
           </div>
         </div>
@@ -950,6 +981,7 @@
             <div class="sim-title-group">
               <span class="live-dot-glow orange"></span>
               <h3 class="panel-title">2026–2050 "What-If" Climate &amp; Fire Spread Projection Simulator</h3>
+              <div class="labs-illustrative-banner" style="margin-bottom: 0; margin-left: 10px;">⚠️ Illustrative, not validated against observations.</div>
             </div>
             <div class="scenario-buttons">
               <button class="btn btn-xs btn-scenario" data-scenario="ssp126">SSP1-2.6 (Paris Ambitious)</button>
@@ -1003,6 +1035,7 @@
           <div class="orbit3d-titles">
             <span class="panel-icon">&#127758;</span>
             <div>
+              <div class="labs-illustrative-banner" style="margin-bottom: 6px;">⚠️ Illustrative, not validated against observations.</div>
               <h2 class="view-title">3D Planetary Orbital Swath &amp; Geometric Distortion Mission Workbench</h2>
               <p class="view-subtitle">Interactive WebGL Earth comparing 705 km (MODIS) vs 824 km (VIIRS) scan swaths side-by-side with scan edge bow-tie pixel growth simulator.</p>
             </div>
@@ -1160,16 +1193,25 @@
         <div class="glass-panel export-center-card full-width">
           <div class="panel-header">
             <h3 class="panel-title">&#128190; Operational Deliverable Downloads &amp; Export Center</h3>
-            <span class="badge-tag">NASA Standard Compliance</span>
+            <span class="badge-tag">Observational Compliance</span>
           </div>
 
           <div class="export-actions-grid">
             <div class="export-card">
               <div class="exp-icon">&#128196;</div>
               <div class="exp-content">
+                <h4>Executive Fire Intelligence Brief</h4>
+                <p>One-page briefing with AOI benchmarks, decadal trends, top 5 historic fire seasons, and mini calendar heatmap.</p>
+                <button class="btn btn-sm btn-primary" id="btn-export-brief-modal">Generate Fire Brief</button>
+              </div>
+            </div>
+
+            <div class="export-card">
+              <div class="exp-icon">&#128451;</div>
+              <div class="exp-content">
                 <h4>NASA Technical PDF Report</h4>
                 <p>Complete publication deliverable including multi-biome executive briefing, physical operators, mathematical formulations, and validation audits.</p>
-                <a href="Harmonizing_MODIS_VIIRS_Fire_Hotspots_Report.pdf" target="_blank" class="btn btn-sm btn-primary" download>
+                <a href="Harmonizing_MODIS_VIIRS_Fire_Hotspots_Report.pdf" target="_blank" class="btn btn-sm btn-secondary" download>
                   Download PDF Report
                 </a>
               </div>
@@ -1218,7 +1260,7 @@
             <div class="flow-stage"><span class="stage-num">06</span><div class="stage-title">Theil-Sen Fit</div><div class="stage-desc">Robust slope calibration</div></div>
             <div class="flow-stage"><span class="stage-num">07</span><div class="stage-title">Bias Truncation</div><div class="stage-desc">2012 cliff elimination</div></div>
             <div class="flow-stage"><span class="stage-num">08</span><div class="stage-title">Z-Score Normalization</div><div class="stage-desc">Multi-decadal climatology</div></div>
-            <div class="flow-stage"><span class="stage-num">09</span><div class="stage-title">GWIS Tier Rating</div><div class="stage-desc">Hazard categorization 1–5</div></div>
+            <div class="flow-stage"><span class="stage-num">09</span><div class="stage-title">Anomaly Class Rating</div><div class="stage-desc">Hazard categorization 1–5</div></div>
             <div class="flow-stage"><span class="stage-num">10</span><div class="stage-title">FRE Integration</div><div class="stage-desc">Biomass &amp; carbon budgets</div></div>
             <div class="flow-stage"><span class="stage-num">11</span><div class="stage-title">Spatial Aggregation</div><div class="stage-desc">Custom AOI synthesis</div></div>
             <div class="flow-stage"><span class="stage-num">12</span><div class="stage-title">Open Deliverables</div><div class="stage-desc">CSV, GeoJSON &amp; PDF reports</div></div>
@@ -1267,7 +1309,7 @@
               It provides a continuous, open-science active fire climatology spanning from the launch of Terra MODIS (2000) to the latest operational VIIRS observations on NOAA-21 (2026), empowering emergency managers, firefighters, land managers, and carbon modelers with consistent long-term fire intelligence.
             </p>
             <div class="citation-box">
-              <code>FireBridge Team (2026). FireBridge: Harmonization of NASA MODIS and VIIRS Active Fire Hotspots (2000–2026). 2026 NASA Space Apps Challenge Operational Prototype. Available at: https://github.com/nasa-spaceapps-2026/firebridge</code>
+              <code>FireBridge Team (2026). FireBridge: Harmonization of NASA MODIS and VIIRS Active Fire Hotspots (2000–2026). 2026 NASA Space Apps Challenge Operational Prototype. Available at: https://github.com/naveenkaranrs/FireBridge</code>
             </div>
           </div>
         </div>
@@ -1423,6 +1465,79 @@
       <div class="modal-footer" style="padding: 12px 18px; display: flex; justify-content: space-between;">
         <button class="btn btn-xs btn-secondary" id="btn-diag-view-map">📍 Focus Month on Map</button>
         <button class="btn btn-xs btn-ghost" id="btn-close-diag-modal-ft">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- One-Page Executive Fire Intelligence Brief Modal -->
+  <div class="modal-brief-backdrop" id="modal-fire-brief" style="display: none;">
+    <div class="brief-modal-box">
+      <div class="brief-header">
+        <div>
+          <div class="brief-title">🔥 FireBridge Executive Fire Intelligence Brief</div>
+          <div class="brief-subtitle" id="brief-aoi-coords">AOI: Northern California [-124.5°W, 36.5°N, -119.0°W, 42.0°N] &bull; Generated <span id="brief-gen-date">--</span> UTC</div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span class="provenance-pill archive" id="brief-provenance-badge">FIRMS ARCHIVE</span>
+          <button class="btn btn-xs btn-ghost btn-close-brief" id="btn-close-brief-hdr" title="Close Brief">&times;</button>
+        </div>
+      </div>
+
+      <div class="brief-body">
+        <!-- Top KPI Grid -->
+        <div class="brief-kpi-row">
+          <div class="brief-kpi-cell">
+            <div class="brief-kpi-lbl">Current Month Status</div>
+            <div class="brief-kpi-val" id="brief-current-val">--</div>
+            <div style="font-size: 10px; color: #94a3b8;" id="brief-vs-median">-- vs Median</div>
+          </div>
+          <div class="brief-kpi-cell">
+            <div class="brief-kpi-lbl">Anomaly Classification</div>
+            <div class="brief-kpi-val" id="brief-class-val" style="font-size: 14px;">--</div>
+            <div style="font-size: 10px; color: #94a3b8;" id="brief-percentile-val">-- percentile</div>
+          </div>
+          <div class="brief-kpi-cell">
+            <div class="brief-kpi-lbl">Peak Fire Season</div>
+            <div class="brief-kpi-val" id="brief-peak-season" style="font-size: 14px;">Jul – Oct</div>
+            <div style="font-size: 10px; color: #94a3b8;">Climatological Window</div>
+          </div>
+          <div class="brief-kpi-cell">
+            <div class="brief-kpi-lbl">Decadal Trend</div>
+            <div class="brief-kpi-val" id="brief-trend-val">+5.5%/yr</div>
+            <div style="font-size: 10px; color: #94a3b8;">Theil-Sen Calibrated</div>
+          </div>
+        </div>
+
+        <!-- Split Layout: Top Seasons vs Heatmap Preview -->
+        <div class="brief-split-layout">
+          <div>
+            <div style="font-size: 11px; font-weight: 700; color: #e2e8f0; margin-bottom: 6px;">Historic Record Years &amp; Peak Months</div>
+            <table class="brief-subtable">
+              <thead>
+                <tr><th>Rank</th><th>Year</th><th>Total Fire Events</th><th>Severity Index</th></tr>
+              </thead>
+              <tbody id="brief-top-years-tbody">
+                <!-- Dynamically populated -->
+              </tbody>
+            </table>
+          </div>
+
+          <div>
+            <div style="font-size: 11px; font-weight: 700; color: #e2e8f0; margin-bottom: 6px;">Multi-Decadal Burning Heatmap (2000–2026)</div>
+            <canvas id="brief-mini-calendar" width="360" height="150" style="width: 100%; height: 150px; border-radius: 4px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.06);"></canvas>
+            <div style="font-size: 9px; color: #64748b; margin-top: 4px;">Standardized continuous MODIS+VIIRS observations across 27 years.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="brief-footer">
+        <div style="font-size: 10px; color: #64748b;">
+          FireBridge Operational Prototype &bull; NASA Space Apps 2026 &bull; <span id="brief-footer-provenance">Verified Provenance</span>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <button class="btn btn-xs btn-primary" id="btn-print-brief">🖨️ Print / Save as PDF</button>
+          <button class="btn btn-xs btn-ghost btn-close-brief" id="btn-close-brief-ft">Close</button>
+        </div>
       </div>
     </div>
   </div>

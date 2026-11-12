@@ -1,0 +1,23 @@
+{
+  "ols": {
+    "slope": 0.3328,
+    "intercept": 30.12,
+    "r2": 0.9893,
+    "rmse": 169.6,
+    "mae": 85.2,
+    "bias": 0.12,
+    "ci_pct": 0.062,
+    "loyo_cross_validated": true
+  },
+  "theil_sen": {
+    "slope": 0.3421,
+    "intercept": -1.14,
+    "r2": 0.9875,
+    "rmse": 160.0,
+    "mae": 76.1,
+    "bias": 0.04,
+    "ci_pct": 0.048,
+    "breakdown_point": "29.3%",
+    "loyo_cross_validated": true
+  }
+}

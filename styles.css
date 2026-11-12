@@ -2277,6 +2277,24 @@ body {
   .kpi-value {
     font-size: 26px;
   }
+  .cal-quick-exports {
+    flex-wrap: wrap !important;
+    margin-left: 0 !important;
+    margin-top: 6px;
+  }
+  .brief-kpi-row {
+    grid-template-columns: 1fr 1fr !important;
+  }
+  .brief-split-layout {
+    grid-template-columns: 1fr !important;
+  }
+  .firms-stream-inputs {
+    flex-direction: column !important;
+  }
+  .firms-stream-inputs input, .firms-stream-inputs select {
+    min-width: 100% !important;
+    max-width: 100% !important;
+  }
 }
 
 /* ==========================================================================
@@ -5107,4 +5125,265 @@ body {
   font-size: 11px;
   color: #94a3b8;
   line-height: 1.4;
+}
+
+/* --- FIREBRIDGE LABS, ACCESSIBILITY, PROVENANCE & FIRE BRIEF STYLES --- */
+.labs-illustrative-banner {
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.45);
+  color: #fbbf24;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 12px;
+  letter-spacing: 0.02em;
+}
+
+.badge-tag-illustrative {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  font-size: 9px;
+  padding: 1px 4px;
+  border-radius: 2px;
+  margin-left: 3px;
+  font-weight: 600;
+}
+
+.provenance-pill {
+  font-family: var(--font-mono, monospace);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 3px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.provenance-pill.synthetic {
+  background: rgba(245, 158, 11, 0.16);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+}
+
+.provenance-pill.archive {
+  background: rgba(56, 189, 248, 0.16);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.35);
+}
+
+:focus-visible {
+  outline: 2px solid #38bdf8 !important;
+  outline-offset: 2px !important;
+}
+
+.cal-cell:focus {
+  outline: 2px solid #38bdf8 !important;
+  outline-offset: 1px;
+  z-index: 20;
+  transform: scale(1.15);
+}
+
+.calendar-grid-container.compact-cells .cal-cell {
+  font-size: 0 !important;
+}
+
+.cal-legend-ticks {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  font-size: 9px;
+  font-family: var(--font-mono, monospace);
+  color: #94a3b8;
+  margin-top: 2px;
+}
+
+/* Operational Limitations Card */
+.limitations-card {
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-left: 3px solid #f59e0b;
+  border-radius: 6px;
+  padding: 16px;
+  margin-top: 20px;
+}
+.limitations-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #fbbf24;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.limitations-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 12px;
+  margin-top: 10px;
+}
+.limitation-item {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 4px;
+  padding: 10px;
+}
+.lim-hdr {
+  font-size: 11px;
+  font-weight: 700;
+  color: #e2e8f0;
+  margin-bottom: 4px;
+}
+.lim-body {
+  font-size: 11px;
+  color: #94a3b8;
+  line-height: 1.45;
+}
+
+/* Fire Brief Printable Card */
+.modal-brief-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(2, 6, 23, 0.85);
+  backdrop-filter: blur(6px);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.brief-modal-box {
+  background: #0b1120;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  border-radius: 8px;
+  width: 100%;
+  max-width: 820px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
+  display: flex;
+  flex-direction: column;
+}
+.brief-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+.brief-title {
+  font-size: 16px;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: 0.02em;
+}
+.brief-subtitle {
+  font-size: 11px;
+  color: #94a3b8;
+  margin-top: 3px;
+}
+.brief-body {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.brief-kpi-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+.brief-kpi-cell {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 4px;
+  padding: 10px;
+}
+.brief-kpi-lbl {
+  font-size: 10px;
+  text-transform: uppercase;
+  color: #94a3b8;
+  font-weight: 600;
+}
+.brief-kpi-val {
+  font-size: 18px;
+  font-weight: 800;
+  color: #38bdf8;
+  margin-top: 4px;
+  font-family: var(--font-mono, monospace);
+}
+.brief-split-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.brief-subtable {
+  width: 100%;
+  font-size: 11px;
+  border-collapse: collapse;
+}
+.brief-subtable th {
+  text-align: left;
+  padding: 6px 8px;
+  color: #94a3b8;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 10px;
+}
+.brief-subtable td {
+  padding: 6px 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+.brief-footer {
+  padding: 14px 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .brief-modal-box, .brief-modal-box * {
+    visibility: visible;
+  }
+  .brief-modal-box {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    max-width: 100%;
+    border: none;
+    box-shadow: none;
+    color: #000;
+    background: #fff;
+  }
+  .modal-brief-backdrop {
+    position: static;
+    background: transparent;
+  }
+  .brief-footer, .btn-close-brief {
+    display: none !important;
+  }
+}
+
+/* Reduced Motion Mode */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  .pulse, .live-dot-glow, .btn-tour-pulse {
+    animation: none !important;
+  }
 }

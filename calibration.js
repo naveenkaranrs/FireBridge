@@ -175,6 +175,25 @@ const CAL = {
       formula: m.formula,
       model: m
     };
+  },
+
+  async loadCalibrationJson(url = 'data/calibration.json') {
+    if (typeof fetch !== 'undefined') {
+      try {
+        const res = await fetch(url);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.theil_sen && this.models.theil_sen) {
+            Object.assign(this.models.theil_sen, data.theil_sen);
+          }
+          if (data.ols && this.models.ols) {
+            Object.assign(this.models.ols, data.ols);
+          }
+        }
+      } catch (e) {
+        // Fallback silently to canonical embedded constants
+      }
+    }
   }
 };
 
@@ -185,3 +204,4 @@ if (typeof window !== 'undefined') {
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = CAL;
 }
+
