@@ -8,7 +8,7 @@
 const state = {
   currentView: 'overview',
   currentRegion: 'california',
-  currentHarmonizationModel: 'ols',
+  currentHarmonizationModel: 'theil_sen',
   database: null,
   activeHotspots: [],
   filteredHotspots: [],
@@ -881,11 +881,11 @@ function generateClimatologyForBounds(minLon, minLat, maxLon, maxLat, name = 'Cu
     timeline: timeline,
     sample_hotspots: sample_hotspots,
     model_params: {
-      count_slope: 0.2618,
-      count_intercept: 14.2,
-      count_r2: 0.942,
-      rmse: 124.6,
-      mae: 89.2,
+      count_slope: (typeof CAL !== 'undefined') ? CAL.models.theil_sen.slope : 0.3185,
+      count_intercept: (typeof CAL !== 'undefined') ? CAL.models.theil_sen.intercept : -18.42,
+      count_r2: (typeof CAL !== 'undefined') ? CAL.models.theil_sen.r2 : 0.9875,
+      rmse: (typeof CAL !== 'undefined') ? CAL.models.theil_sen.rmse : 178.4,
+      mae: (typeof CAL !== 'undefined') ? CAL.models.theil_sen.mae : 118.2,
       post_eval: { bias: 0.04, t_pvalue: 0.892 }
     }
   };
@@ -926,10 +926,22 @@ function renderBenchmarkGauge() {
   const histMax = Math.max(...counts);
 
   const currentVal = activeEntry.harmonized_count;
-  const diffPct = median > 0 ? ((currentVal - median) / median) * 100 : 0;
+  // Compute "% vs median" strictly from actual values: (current month / median - 1) * 100
+  const diffPct = median > 0 ? ((currentVal / median) - 1) * 100 : 0;
   const sign = diffPct >= 0 ? '+' : '';
   const maxScale = Math.max(histMax, currentVal, q3 * 1.5) * 1.25;
   const pct = (val) => Math.min(100, Math.max(0, (val / maxScale) * 100));
+
+  // Compute exact percentile rank from actual historical distribution
+  const countBelow = counts.filter(c => c < currentVal).length;
+  const countEqual = counts.filter(c => c === currentVal).length;
+  const exactPercentile = Math.min(100, Math.max(0, Math.round(((countBelow + 0.5 * countEqual) / counts.length) * 100)));
+
+  // Compute exact climatological Z-score from actual distribution
+  const mean = counts.reduce((a, b) => a + b, 0) / counts.length;
+  const variance = counts.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / counts.length;
+  const stdDev = Math.sqrt(variance) || 1;
+  const zScore = (currentVal - mean) / stdDev;
 
   const titleEl = document.getElementById('benchmark-month-title');
   if (titleEl) {
@@ -939,15 +951,18 @@ function renderBenchmarkGauge() {
   const badgeEl = document.getElementById('benchmark-status-badge');
   if (badgeEl) {
     badgeEl.className = 'benchmark-hazard-badge';
-    if (currentVal > q3 * 1.35) {
+    if (zScore >= 2.0) {
       badgeEl.classList.add('extreme');
-      badgeEl.textContent = 'EXTREME ANOMALY: ' + sign + diffPct.toFixed(1) + '% vs 2000–2025 Historical Median';
-    } else if (currentVal > q3) {
+      badgeEl.textContent = 'EXTREME ANOMALY (Tier 5 • ' + exactPercentile + 'th percentile): ' + sign + diffPct.toFixed(1) + '% vs 2000–2025 Historical Median';
+    } else if (zScore >= 1.0 || currentVal > q3) {
       badgeEl.classList.add('elevated');
-      badgeEl.textContent = 'ELEVATED ACTIVITY: ' + sign + diffPct.toFixed(1) + '% vs 2000–2025 Historical Median';
+      badgeEl.textContent = 'ELEVATED ACTIVITY (Tier 3 • ' + exactPercentile + 'th percentile): ' + sign + diffPct.toFixed(1) + '% vs 2000–2025 Historical Median';
+    } else if (zScore >= 0.5) {
+      badgeEl.classList.add('elevated');
+      badgeEl.textContent = 'MODERATE ACTIVITY (Tier 2 • ' + exactPercentile + 'th percentile): ' + sign + diffPct.toFixed(1) + '% vs 2000–2025 Historical Median';
     } else {
       badgeEl.classList.add('normal');
-      badgeEl.textContent = 'NORMAL RANGE: ' + sign + diffPct.toFixed(1) + '% vs 2000–2025 Historical Median';
+      badgeEl.textContent = 'NORMAL RANGE (' + exactPercentile + 'th percentile): ' + sign + diffPct.toFixed(1) + '% vs 2000–2025 Historical Median';
     }
   }
 
@@ -1236,8 +1251,14 @@ function openMonthDiagnosticModal(cellData, year, month) {
 
   const harmCountEl = document.getElementById('diag-harm-count');
   if (harmCountEl) harmCountEl.textContent = cellData.harmonized_count.toLocaleString('en-US') + ' hotspots';
+  const activeModel = (typeof CAL !== 'undefined') ? CAL.getActive() : { r2: 0.9875, formula: 'N_MODIS = 0.3185 × N_VIIRS - 18.42', name: 'Theil-Sen Robust' };
   const harmCiEl = document.getElementById('diag-harm-ci');
-  if (harmCiEl) harmCiEl.textContent = `95% CI: ±${ciVal.toLocaleString('en-US')} hotspots (R²=0.989)`;
+  if (harmCiEl) harmCiEl.textContent = `95% CI: ±${ciVal.toLocaleString('en-US')} hotspots (R²=${activeModel.r2.toFixed(4)})`;
+
+  const opFormulaEl = document.getElementById('diag-operator-formula');
+  if (opFormulaEl) {
+    opFormulaEl.textContent = `${activeModel.formula} (${activeModel.name}, R² = ${activeModel.r2.toFixed(4)})`;
+  }
 
   const freEl = document.getElementById('diag-fre-mj');
   if (freEl) freEl.textContent = freMj >= 1000000 ? (freMj / 1000000).toFixed(2) + ' M MJ' : freMj.toLocaleString('en-US') + ' MJ';
@@ -1723,78 +1744,32 @@ function renderComparisonCharts() {
 // Update Calibration KPI Cards on Model Selection
 function updateModelKpiDisplay() {
   if (!state.database || !state.database[state.currentRegion]) return;
-  const regionData = state.database[state.currentRegion];
-  if (!regionData) return;
-  const p = regionData.model_params || {};
-  const m = state.currentHarmonizationModel || 'ols';
+  const m = state.currentHarmonizationModel || 'theil_sen';
 
   const eqEl = document.getElementById('model-kpi-eq');
   const r2El = document.getElementById('model-kpi-r2');
   const rmseEl = document.getElementById('model-kpi-rmse');
   const maeEl = document.getElementById('model-kpi-mae');
-  const nEl = document.getElementById('model-kpi-n');
   const biasEl = document.getElementById('model-kpi-bias');
   const globalBadge = document.getElementById('global-active-model-badge');
   const formulaDisplay = document.getElementById('formula-display');
   const formulaDesc = document.getElementById('formula-desc');
+  const labOperatorPill = document.getElementById('lab-active-operator-pill');
 
-  const MODEL_METAS = {
-    ols: {
-      eq: 'N_MODIS = ' + (p.count_slope ? p.count_slope.toFixed(4) : '0.3298') + ' × N_VIIRS - 24.18 (R² = 0.9890)',
-      r2: '0.9890',
-      rmse: '169.2 events',
-      mae: '112.4 events',
-      bias: '0.12 events/mo',
-      badge: 'OLS Overlap Calibration (R²=0.9890)',
-      desc: 'Ordinary Least Squares calibrated against the 10-year contemporaneous overlap period (2012–2021) across all six NASA biomes, reducing residual bias to 0.12 events/month.'
-    },
-    theil_sen: {
-      eq: 'N_MODIS = 0.3185 × N_VIIRS - 18.42 (Theil-Sen Robust, R² = 0.9875)',
-      r2: '0.9875',
-      rmse: '178.4 events',
-      mae: '118.2 events',
-      bias: '0.04 events/mo',
-      badge: 'Robust Theil-Sen Median Estimator (R²=0.9875)',
-      desc: 'Theil-Sen Non-Parametric Median Estimator computes the median of all pairwise slopes, completely insulating the harmonized record from catastrophic megafire outlier distortion.'
-    },
-    pixel_area: {
-      eq: 'N_harm = N_viirs × (0.14 km² / 1.00 km²)^0.88 (R² = 0.9740)',
-      r2: '0.9740',
-      rmse: '214.0 events',
-      mae: '142.6 events',
-      bias: '0.64 events/mo',
-      badge: 'Pixel-Area Geometric Convolution (R²=0.9740)',
-      desc: 'Geometric Point-Spread Function (PSF) area scaling based on the 7.11× footprint ratio between MODIS (1km) and VIIRS (375m) pixels.'
-    },
-    sofiev: {
-      eq: 'N_MODIS = N_VIIRS[FRP ≥ 3.7 MW] × 1.082 (R² = 0.9915)',
-      r2: '0.9915',
-      rmse: '142.1 events',
-      mae: '88.5 events',
-      bias: '0.08 events/mo',
-      badge: 'Sofiev & Konovalov FRP Truncation Filter (R²=0.9915)',
-      desc: 'Sofiev & Konovalov physical observation threshold filter: removes low-intensity subpixel VIIRS detections (< 3.7 MW) invisible to MODIS detectors.'
-    },
-    quantile: {
-      eq: 'N_MODIS = F_MOD^-1(F_VIIRS(N_VIIRS)) (R² = 0.9882)',
-      r2: '0.9882',
-      rmse: '158.3 events',
-      mae: '94.2 events',
-      bias: '0.02 events/mo',
-      badge: 'Empirical Quantile Mapping Transfer Operator (R²=0.9882)',
-      desc: 'Empirical Quantile Mapping aligns cumulative distribution functions (CDFs) across both sensors across all quantiles.'
-    }
-  };
-
-  const info = MODEL_METAS[m] || MODEL_METAS.ols;
-  if (eqEl) eqEl.textContent = info.eq;
-  if (r2El) r2El.textContent = info.r2;
-  if (rmseEl) rmseEl.textContent = info.rmse;
-  if (maeEl) maeEl.textContent = info.mae;
-  if (biasEl) biasEl.textContent = info.bias;
-  if (globalBadge) globalBadge.textContent = info.badge;
-  if (formulaDisplay) formulaDisplay.textContent = info.eq;
-  if (formulaDesc) formulaDesc.textContent = info.desc;
+  if (typeof CAL !== 'undefined') {
+    CAL.setActive(m);
+    const info = CAL.getActive();
+    if (eqEl) eqEl.textContent = info.formula + ' (R² = ' + info.r2.toFixed(4) + ')';
+    if (r2El) r2El.textContent = info.r2.toFixed(4);
+    if (rmseEl) rmseEl.textContent = info.rmse.toFixed(1) + ' events';
+    if (maeEl) maeEl.textContent = info.mae.toFixed(1) + ' events';
+    if (biasEl) biasEl.textContent = info.bias.toFixed(2) + ' events/mo';
+    if (globalBadge) globalBadge.textContent = info.badge;
+    if (formulaDisplay) formulaDisplay.textContent = info.formula + ' (R² = ' + info.r2.toFixed(4) + ')';
+    if (formulaDesc) formulaDesc.textContent = info.desc + (info.robustness_reason ? ' ' + info.robustness_reason : '');
+    if (labOperatorPill) labOperatorPill.textContent = info.name + ' (' + (info.id === 'theil_sen' ? '29.3% Breakdown' : 'R²=' + info.r2.toFixed(4)) + ')';
+  }
+}
 }
 
 // --- ANOMALY CHARTS (VIEW 6) ---
@@ -3337,53 +3312,30 @@ function initHarmonizationLab() {
 
   function calculateLiveHarmonization() {
     const rawVal = parseFloat(sliderCalc ? sliderCalc.value : 1250);
-    const m = state.currentHarmonizationModel || 'ols';
+    const m = state.currentHarmonizationModel || 'theil_sen';
     let harmVal = 0;
     let ci = 0;
-    let formula = '';
+    let delta = 0;
+    let deltaPct = 0;
 
-    if (calcDirection === 'viirs_to_modis') {
-      if (m === 'ols') {
-        harmVal = Math.max(0, 0.3298 * rawVal - 24.18);
-        ci = harmVal * 0.062;
-        formula = 'N_MODIS = 0.3298 × N_VIIRS - 24.18';
-      } else if (m === 'theil_sen') {
-        harmVal = Math.max(0, 0.3185 * rawVal - 18.42);
-        ci = harmVal * 0.048;
-        formula = 'N_MODIS = 0.3185 × N_VIIRS - 18.42 (Theil-Sen Median)';
-      } else if (m === 'pixel_area') {
-        harmVal = Math.max(0, rawVal * Math.pow(0.14 / 1.00, 0.88));
-        ci = harmVal * 0.085;
-        formula = 'N_MODIS = N_VIIRS × (0.14/1.00)^0.88 (PSF)';
-      } else if (m === 'sofiev') {
-        harmVal = Math.max(0, rawVal * 0.285 + 4.2);
-        ci = harmVal * 0.042;
-        formula = 'N_MODIS = N_VIIRS[FRP ≥ 3.7 MW] × 1.082';
-      } else if (m === 'quantile') {
-        harmVal = Math.max(0, 0.314 * Math.pow(rawVal, 1.012));
-        ci = harmVal * 0.051;
-        formula = 'N_MODIS = F_MOD^-1(F_VIIRS(N_VIIRS))';
-      }
+    if (typeof CAL !== 'undefined') {
+      CAL.setActive(m);
+      const res = CAL.calculate(rawVal, calcDirection);
+      harmVal = res.harmonized;
+      ci = res.ci;
+      delta = (harmVal - rawVal).toFixed(1);
+      deltaPct = (((harmVal - rawVal) / Math.max(1, rawVal)) * 100).toFixed(1);
     } else {
-      // MODIS to VIIRS equivalent
-      if (m === 'ols') {
-        harmVal = (rawVal + 24.18) / 0.3298;
-        ci = harmVal * 0.065;
-      } else if (m === 'theil_sen') {
-        harmVal = (rawVal + 18.42) / 0.3185;
-        ci = harmVal * 0.052;
-      } else {
-        harmVal = rawVal * 3.12;
-        ci = harmVal * 0.07;
-      }
+      harmVal = Math.max(0, 0.3185 * rawVal - 18.42);
+      ci = harmVal * 0.048;
+      delta = (harmVal - rawVal).toFixed(1);
+      deltaPct = (((harmVal - rawVal) / Math.max(1, rawVal)) * 100).toFixed(1);
     }
 
     const resEl = document.getElementById('calc-result-val');
     const ciEl = document.getElementById('calc-result-ci');
     if (resEl) resEl.textContent = harmVal.toFixed(1) + ' events';
     if (ciEl) {
-      const delta = (harmVal - rawVal).toFixed(1);
-      const deltaPct = (((harmVal - rawVal) / Math.max(1, rawVal)) * 100).toFixed(1);
       ciEl.innerHTML = `&plusmn; ${ci.toFixed(1)} events (95% CI) &bull; Reconciled Bias: <strong>${delta} events (${deltaPct}%)</strong>`;
     }
   }

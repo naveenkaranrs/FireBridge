@@ -4,7 +4,9 @@
   "description": "NASA FIRMS MODIS and VIIRS Fire Hotspot Harmonization Engine",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "check": "node check_numbers.js",
+    "test": "node check_numbers.js"
   },
   "keywords": [
     "nasa",

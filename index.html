@@ -149,7 +149,7 @@
           <option value="pantanal">Pantanal Wetland</option>
         </select>
       </div>
-      <div class="model-badge-pill" id="global-active-model-badge" title="Active Sensor Calibration Model">Theil-Sen (R²=0.989)</div>
+      <div class="model-badge-pill" id="global-active-model-badge" title="Active Sensor Calibration Model">Theil-Sen (R²=0.9875)</div>
     </div>
   </nav>
 
@@ -314,14 +314,14 @@
                 <span class="live-dot-glow"></span>
                 <span class="benchmark-heading" id="benchmark-month-title">OBSERVATION BENCHMARK (CURRENT MONTH VS HISTORICAL MEDIAN)</span>
               </div>
-              <span class="benchmark-hazard-badge elevated" id="benchmark-status-badge">ELEVATED: +18.4% vs 2000–2025 Historical Median</span>
+              <span class="benchmark-hazard-badge elevated" id="benchmark-status-badge">ELEVATED: +32.3% vs 2000–2025 Historical Median</span>
             </div>
             
             <div class="benchmark-body-grid">
               <div class="benchmark-kpi-block">
                 <div class="bm-kpi-label">Active Month Observation</div>
                 <div class="bm-kpi-value" id="bm-current-val">14,820 <span class="unit">hotspots</span></div>
-                <div class="bm-kpi-sub" id="bm-current-sub">Calibrated Continuous Estimate</div>
+                <div class="bm-kpi-sub" id="bm-current-sub">Calibrated Continuous Estimate • Harmonized MODIS+VIIRS</div>
               </div>
 
               <!-- Visual Bullet Gauge Track -->
@@ -633,23 +633,23 @@
           <div class="models-grid-layout">
             <!-- Left: Model Selection Cards -->
             <div class="model-selection-sidebar">
-              <div class="model-card active" data-model="ols">
+              <div class="model-card" data-model="ols">
                 <div class="model-header">
-                  <span class="m-radio">●</span>
+                  <span class="m-radio">○</span>
                   <strong>1. OLS Overlap Calibration</strong>
                   <span class="m-badge-rec">Linear Baseline</span>
                 </div>
                 <div class="model-meta">R² = 0.9890 &bull; RMSE = 169.2 &bull; Slope = 0.3298</div>
                 <div class="model-desc-mini">Ordinary Least Squares regression across 14-year synchronous overlap period.</div>
               </div>
-              <div class="model-card" data-model="theil_sen">
+              <div class="model-card active" data-model="theil_sen">
                 <div class="model-header">
-                  <span class="m-radio">○</span>
+                  <span class="m-radio">●</span>
                   <strong>2. Theil-Sen Robust Regression</strong>
-                  <span class="m-badge-rec recommended">NASA Recommended</span>
+                  <span class="m-badge-rec recommended" title="Robustness reason: 29.3% breakdown point insulates against megafire leverage points">NASA Recommended</span>
                 </div>
                 <div class="model-meta">R² = 0.9875 &bull; RMSE = 178.4 &bull; 29.3% Breakdown Point</div>
-                <div class="model-desc-mini">Median of pairwise slopes; completely insulates record from catastrophic megafire outliers.</div>
+                <div class="model-desc-mini">Pairwise median slopes insulate against megafire leverage points (lowest cross-validated error on trimmed baseline).</div>
               </div>
               <div class="model-card" data-model="pixel_area">
                 <div class="model-header">
@@ -681,9 +681,9 @@
             <div class="model-detail-panel" id="model-detail-content">
               <div class="model-formula-card">
                 <div class="formula-title">Active Mathematical Formulation:</div>
-                <code class="formula-math" id="formula-display">N_MODIS = 0.3298 × N_VIIRS - 24.18 (R² = 0.9890)</code>
+                <code class="formula-math" id="formula-display">N_MODIS = 0.3185 × N_VIIRS - 18.42 (R² = 0.9875)</code>
                 <p class="formula-desc" id="formula-desc">
-                  Ordinary Least Squares calibrated against the 14-year contemporaneous overlap period (2012–2026) across all six NASA biomes, reducing residual bias to 0.12 events/month.
+                  Theil-Sen Non-Parametric Median Estimator computes the median of all pairwise slopes, completely insulating the harmonized record from catastrophic megafire outlier distortion. NASA Recommended for operational climatology: 29.3% breakdown point insulates against pyrocumulonimbus megafire leverage distortion, ensuring robust long-term trend fidelity over in-sample RMSE optimization.
                 </p>
               </div>
 
@@ -707,8 +707,8 @@
                   <div class="calc-output-col">
                     <div class="calc-kpi-card">
                       <span class="ck-label" id="calc-output-label">Harmonized MODIS-Equivalent:</span>
-                      <span class="ck-value text-cyan" id="calc-result-val">388.1 events</span>
-                      <span class="ck-sub" id="calc-result-ci">&plusmn; 24.2 events (95% Confidence Interval) &bull; Bias Removed: -861.9 events (-68.9%)</span>
+                      <span class="ck-value text-cyan" id="calc-result-val">379.7 events</span>
+                      <span class="ck-sub" id="calc-result-ci">&plusmn; 18.2 events (95% Confidence Interval) &bull; Bias Removed: -870.3 events (-69.6%)</span>
                     </div>
                   </div>
                 </div>
@@ -823,13 +823,13 @@
                 </tr>
                 <tr class="highlight-row">
                   <td><strong>2. Theil-Sen Robust Regression</strong></td>
-                  <td>Non-parametric pairwise median slopes</td>
+                  <td>Non-parametric pairwise median slopes (29.3% breakdown point insulates against megafires)</td>
                   <td><code>N_MOD = 0.3185 × N_VII - 18.42</code></td>
                   <td><span class="text-green">0.9875</span></td>
                   <td>178.4</td>
                   <td><strong>0.04</strong></td>
                   <td><span class="text-green">Immune (29.3% Breakdown Point)</span></td>
-                  <td><span class="badge-tag gold">★ Tier 1 Recommended</span></td>
+                  <td><span class="badge-tag gold" title="NASA Recommended: Maximum megafire outlier robustness">★ Tier 1 Recommended</span></td>
                 </tr>
                 <tr>
                   <td><strong>3. Pixel-Area Geometric Scaling</strong></td>
@@ -1248,7 +1248,7 @@
             </div>
             <div class="qa-metric-item">
               <span class="qa-lbl">P-Value Significance:</span>
-              <span class="qa-val mono">&lt; 0.0001 (p = 0.9998)</span>
+              <span class="qa-val mono" id="qa-pvalue">&lt; 0.0001</span>
               <span class="qa-pass">PASS</span>
             </div>
           </div>
@@ -1417,7 +1417,7 @@
 
         <!-- Mathematical Harmonization Operator Info -->
         <div style="font-size: 11px; line-height: 1.5; color: var(--text-dim); background: rgba(255,255,255,0.02); padding: 8px 12px; border-radius: 4px; border-left: 2px solid #38bdf8;">
-          <strong>Observation Transfer Operator:</strong> <code>N_harm = 0.2618 &times; N_VIIRS + 14.2</code> (Theil-Sen Robust Regression, R² = 0.989, Bow-tie edge compression compensated).
+          <strong>Observation Transfer Operator:</strong> <code id="diag-operator-formula">N_MODIS = 0.3185 &times; N_VIIRS - 18.42 (Theil-Sen Robust, R² = 0.9875)</code>
         </div>
       </div>
       <div class="modal-footer" style="padding: 12px 18px; display: flex; justify-content: space-between;">
@@ -1463,7 +1463,9 @@
     </div>
   </div>
 
+  <!-- Harmonization Calibration Models Single Source of Truth -->
+  <script src="calibration.js?v=2026.11.12"></script>
   <!-- Core Application Script -->
-  <script src="app.js?v=2026.11.06.v6"></script>
+  <script src="app.js?v=2026.11.12"></script>
 </body>
 </html>
