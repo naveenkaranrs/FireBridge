@@ -1828,7 +1828,6 @@ function updateModelKpiDisplay() {
     if (labOperatorPill) labOperatorPill.textContent = info.name + ' (' + (info.id === 'theil_sen' ? '29.3% Breakdown' : 'R²=' + info.r2.toFixed(4)) + ')';
   }
 }
-}
 
 // --- ANOMALY CHARTS (VIEW 6) ---
 function renderAnomalyCharts() {
